@@ -1,4 +1,4 @@
---
+---
 layout: post
 title: "OAuth2 Explained: Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle"
 date: 2013-07-17 10:35
