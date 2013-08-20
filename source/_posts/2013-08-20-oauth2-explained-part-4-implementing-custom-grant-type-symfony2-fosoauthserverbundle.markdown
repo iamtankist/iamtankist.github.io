@@ -167,6 +167,6 @@ otherwise an
 
 	{"error":"invalid_grant"}
 
-## Bottomline
+## Summary
 
 As you see implementing custom authorisation mechanisms with OAuth2 and Symfony2 using FOSOAuthServerBundle is really easy. One other example when you need this, is when you implement an API which supports a mobile app, and one of the features is Facebook login on the mobile app. Then you need to somehow login user on the backend as well. The correct way to do this is passing a facebook access token through a custom grant extension to the backend, backend then makes a request to the facebook, to make sure the token is correct, finds out user from it, and gives back the mobile app an access_token with a backend user associated to it. 
