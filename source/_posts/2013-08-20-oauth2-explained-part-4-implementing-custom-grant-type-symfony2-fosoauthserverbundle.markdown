@@ -19,7 +19,7 @@ First, let's modify the User entity. It needs to hold the API key from now on.
 
 <!-- more -->
 
-``` PHP
+``` php
 	<?php 
 
 	namespace Acme/DemoBundle/Entity;
