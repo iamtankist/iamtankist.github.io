@@ -10,7 +10,7 @@ published: true
 - [Part 1 - Principles and Terminology](http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/)
 - [Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle](http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/)
 - [Part 3 - Using OAuth2 with your bare hands](http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/)
-- Part 4 - Implementing custom Grant Type
+- [Part 4 - Implementing Custom Grant Type](http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/)
 - Part 5 - Implementing OAuth2 Client with Symfony2 
 
 
