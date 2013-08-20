@@ -7,6 +7,12 @@ categories: [OAuth, Symfony2]
 published: true
 ---
 
+- [Part 1 - Principles and Terminology](http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/)
+- [Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle](http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/)
+- [Part 3 - Using OAuth2 with your bare hands](http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/)
+- [Part 4 - Implementing Custom Grant Type](http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/)
+- Part 5 - Implementing OAuth2 Client with Symfony2 
+
 # We need something custom
 
 In the previous part we have tested several standard grant-types that come out-of the box with FOSOAuthServerBundle, but probably you will need something more specific for your application. For example it is common to assign specific user API keys to allow access to the application. That way you don't expose user password to the API on the other you can control API keys, make them expire, revoke, etc. 
