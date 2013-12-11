@@ -232,6 +232,7 @@ We are going to need a user provider as well.
 Now register the user manager, repository and provider in the Dependency Injection Container
 
 ``` xml
+	<!-- src/Acme/DemoBundle/Resources/config/services.xml -->
     <parameters>
         <parameter key="platform.entity.user.class">Acme\DemoBundle\Entity\User</parameter>
         <parameter key="platform.user.provider.class">Acme\DemoBundle\Provider\UserProvider</parameter>
