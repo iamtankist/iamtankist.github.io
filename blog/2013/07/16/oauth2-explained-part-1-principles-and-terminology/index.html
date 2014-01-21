@@ -1,0 +1,303 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>OAuth2 Explained: Part 1 - Principles and Terminology - Yet Another Tecnical Blog</title>
+  <meta name="author" content="Armen Mkrtchyan">
+
+  
+  <meta name="description" content="Part 1 &ndash; Principles and Terminology
+Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle
+Part 3 &ndash; Using OAuth2 with &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://iamtankist.github.io/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Yet Another Tecnical Blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43119851-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Yet Another Tecnical Blog</a></h1>
+  
+    <h2>Random thoughts on technology and stuff.</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:iamtankist.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">OAuth2 Explained: Part 1 - Principles and Terminology</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-16T15:35:00+02:00" pubdate data-updated="true">Jul 16<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><ul>
+<li><a href="http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/">Part 1 &ndash; Principles and Terminology</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
+<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+</ul>
+
+
+<h2>Why OAuth and a bit of Terminology</h2>
+
+<p>Before we dive in into technical aspects of OAuth, let&rsquo;s get the OAuth terminology straight.</p>
+
+<h3>Provider</h3>
+
+<p>So you have a functional platform, gathered some data and functionality and now it&rsquo;s time when you need to provide this data and functionality over an API to your users, mobile devices and other platforms. You will be an OAuth <strong>Provider</strong>, rather soon.</p>
+
+<!-- more -->
+
+
+<h3>Access Token</h3>
+
+<p>Let&rsquo;s say you have an API to protect. You need to provide some functionality over it, including passing back and forth sensible data.</p>
+
+<p>Let&rsquo;s assume, a user is able to log in using mobile application and request his current balance on his account. Simplest thing comes to your mind:</p>
+
+<blockquote><p>/user/15/balance</p></blockquote>
+
+<p>where 15 is user&rsquo;s id? Bad idea. Everyone who is able to use any kind of development console for the browser can change user id and get access to a sensible data. How can you solve this?</p>
+
+<p>Right. The same way PHP Sessions work for example. You generate a token, something similar to PHPSESSID, you create it at the moment when user logs in, pass this token back and forth with each request, and that&rsquo;s how the server knows that this is the user associated with current session. There is no way one can manipulate session token in order to get data for specific user. And then when the user logs out you remove the token, or it just gets expired after awhile.</p>
+
+<p>Congratulations, you just invented the main entity of OAuth &ndash; <strong>Access Token</strong>.</p>
+
+<p>In OAuth world obtaining Access Token means getting access to the application. Once you get it, you attach the access token to each of your requests, and Provider can uniquely identify who you are and what actions are you allowed to perform. Obtained Access Token? Game over, You Won!</p>
+
+<h3>Clients and Scopes</h3>
+
+<p>What if, we need a special kind of service which is able to set user balance, and that&rsquo;s for each and one of them. One solution (and your operations team will really like it) you just give it another endpoint, and this endpoint is open only for white-listed IPs. If you googled for this article, most probably you already know at least 5 reasons why this solution stinks.</p>
+
+<p>A better solution would be: You are able, somehow, on the backend side, distinguish between different type of consumers for your applications. Some are more privileged, some are less. Some are allowed to request only their own balance, some clients are allowed to manipulate this balances for all possible users. So we need a mechanism to specify different <strong>Clients</strong>  and give them different privileges or in OAuth terminology &ndash; <strong>Scopes</strong>. You most probably don&rsquo;t need a Client for each User, you are fine with one Client for all Users, one Client for a MobileApp, one Client for an accounting application. Each client gets a pair of credentials. <strong>Client ID</strong> and <strong>Client Secret</strong>. You need those in order to identify your client.</p>
+
+<h3>Grant Types</h3>
+
+<p>If you ever used Facebook Login for websites, you know how the most popular Grant Type works. You get redirected to Provider&rsquo;s website, if you are not yet logged in, the Provider offers you a login, then it asks for certain permissions, what can the Client do on your behalf, and then redirects you back. That&rsquo;s the <strong>Authoritation_Code</strong> grant.</p>
+
+<p>But then we have our accounting application. There&rsquo;s no login associated with it, no web interface, it&rsquo;s just a dumb-as-hell cronjob which just wants to trigger some HTTP requests to update user balances on your side. Then we use <strong>Client_Credentials</strong> grant type. It means in order to obtain access to the api, a client should only present his Client Id and Client Password.</p>
+
+<p>Or an intermediate grant type &ndash; password. You provide a client id, client secret, username, password, and the Provider issues an access token, which is connected to this user, so when you get a request, you can identify which user made it.</p>
+
+<p>So the <strong>Grant Type</strong> represents the flow needed for the <strong>Client</strong> to obtain <strong>Access Token</strong>.</p>
+
+<p>In OAuth2 there are five Grant Types that are defined by the standard, but you have an ability to implement a custom one for your needs.</p>
+
+<p>For example you need to identify user not by username/password, but you give them API keys, in order not to transmit password in clear text over API. Then you need to implement a grant type for that flow. How to do that in details will be described in the 5th part of this tutorial.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Armen Mkrtchyan</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-16T15:35:00+02:00" pubdate data-updated="true">Jul 16<span>th</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/oauth/'>OAuth</a>, <a class='category' href='/blog/categories/symfony2/'>Symfony2</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://iamtankist.github.io/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/" data-via="" data-counturl="http://iamtankist.github.io/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+      
+        <a class="basic-alignment right" href="/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/" title="Next Post: OAuth2 Explained: Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle">OAuth2 Explained: Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">OAuth2 Explained: Part 4 - Implementing Custom Grant Type With Symfony2 and FOSOAuthServerBundle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">OAuth2 Explained: Part 3 - Using OAuth2 With Your Bare Hands</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">OAuth2 Explained: Part 2 - Setting Up OAuth2 With Symfony2 Using FOSOAuthServerBundle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/">OAuth2 Explained: Part 1 - Principles and Terminology</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - Armen Mkrtchyan -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'iamtankist';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://iamtankist.github.io/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/';
+        var disqus_url = 'http://iamtankist.github.io/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,480 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>OAuth2 Explained: Part 3 - Using OAuth2 with your bare hands - Yet Another Tecnical Blog</title>
+  <meta name="author" content="Armen Mkrtchyan">
+
+  
+  <meta name="description" content="Part 1 &ndash; Principles and Terminology
+Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle
+Part 3 &ndash; Using OAuth2 with &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://iamtankist.github.io/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Yet Another Tecnical Blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43119851-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Yet Another Tecnical Blog</a></h1>
+  
+    <h2>Random thoughts on technology and stuff.</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:iamtankist.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">OAuth2 Explained: Part 3 - Using OAuth2 With Your Bare Hands</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-18T14:35:00+02:00" pubdate data-updated="true">Jul 18<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><ul>
+<li><a href="http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/">Part 1 &ndash; Principles and Terminology</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
+<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+</ul>
+
+
+<h2>Preparations</h2>
+
+<p>We&rsquo;ll need a controller that mimics a dummy API behavior for us.</p>
+
+<!-- more -->
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Controller</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Bundle\FrameworkBundle\Controller\Controller</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Component\HttpFoundation\JsonResponse</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">ApiController</span> <span class="k">extends</span> <span class="nx">Controller</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">articlesAction</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nv">$articles</span> <span class="o">=</span> <span class="k">array</span><span class="p">(</span><span class="s1">&#39;article1&#39;</span><span class="p">,</span> <span class="s1">&#39;article2&#39;</span><span class="p">,</span> <span class="s1">&#39;article3&#39;</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">return</span> <span class="k">new</span> <span class="nx">JsonResponse</span><span class="p">(</span><span class="nv">$articles</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">userAction</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nv">$user</span> <span class="o">=</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">container</span><span class="o">-&gt;</span><span class="na">get</span><span class="p">(</span><span class="s1">&#39;security.context&#39;</span><span class="p">)</span><span class="o">-&gt;</span><span class="na">getToken</span><span class="p">()</span><span class="o">-&gt;</span><span class="na">getUser</span><span class="p">();</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="nv">$user</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="k">new</span> <span class="nx">JsonResponse</span><span class="p">(</span><span class="k">array</span><span class="p">(</span>
+</span><span class='line'>                <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="nv">$user</span><span class="o">-&gt;</span><span class="na">getId</span><span class="p">(),</span>
+</span><span class='line'>                <span class="s1">&#39;username&#39;</span> <span class="o">=&gt;</span> <span class="nv">$user</span><span class="o">-&gt;</span><span class="na">getUsername</span><span class="p">()</span>
+</span><span class='line'>            <span class="p">));</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="k">new</span> <span class="nx">JsonResponse</span><span class="p">(</span><span class="k">array</span><span class="p">(</span>
+</span><span class='line'>            <span class="s1">&#39;message&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;User is not identified&#39;</span>
+</span><span class='line'>        <span class="p">));</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Let&rsquo;s Fail!</h2>
+
+<p>Please keep in mind, that the point is to obtain access_token.</p>
+
+<p>Why? Request</p>
+
+<pre><code>PROVIDER_HOST/api/articles
+</code></pre>
+
+<p>What?</p>
+
+<pre><code>{"error":"access_denied","error_description":"OAuth2 authentication required"}
+</code></pre>
+
+<p>Right. That&rsquo;s why. Our API is protected, we don&rsquo;t let everybody in. Let&rsquo;s try to do this again once we have the access_token at the end of the chapter.</p>
+
+<h2>Registering OAuth Client</h2>
+
+<p>First we need to create a Client and allow all possible grant types for it. Here&rsquo;s how to do that. Navigate to the project root of the provider (the one we created in <a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">previous part</a>) and then execute the following command. Client host represents a URL, where your client application is deployed. You will get redirected here if everything went as planned.</p>
+
+<pre><code>php app/console acme:oauth-server:client:create --redirect-uri="CLIENT_HOST" --grant-type="authorization_code" --grant-type="password" --grant-type="refresh-token" --grant-type="token" --grant-type="client_credentials"
+</code></pre>
+
+<p>command should respond with something like</p>
+
+<pre><code>Added a new client with public id 2_1y1zqhh7ws5c8kok8g8w88kkokos0wwswwwowos4o48s48s88w, secret 16eqpwofy5dwo4wggk4s40s80sgcs4gc0cwgwsc8k8w0k8sks4
+</code></pre>
+
+<p>Please keep those values somewhere in an easy accessible place, we will need those during this tutorial.
+To keep URLs short and readable I&rsquo;ll refer to those as CLIENT_ID and CLIENT_SECRET in the future.</p>
+
+<p>Let&rsquo;s start from the more complicated grant types and move on to the simpler ones.</p>
+
+<h2>Authorization Code</h2>
+
+<p>That&rsquo;s the most commonly used one, recommended to authorize end customers. A good example is the Facebook Login for websites. Here&rsquo;s how it works.</p>
+
+<p>Request this url in the browser:</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/auth?client_id=CLIENT_ID&amp;response_type=code&amp;redirect_uri=CLIENT_HOST
+</code></pre>
+
+<p>note: redirect_uri should be identical to the one provided on client creation, otherwise you will get a corresponding error message.</p>
+
+<p>The page you are requesting will offer you a login, then authorization of the client permissions, once you confirm everything it will redirect you back to the url you provided in redirect_url. In our case, redirect will look like</p>
+
+<pre><code>CLIENT_HOST/?code=Yjk2MWU5YjVhODBiN2I0ZDRkYmQ1OGM0NGY4MmUyOGM2NDQ2MmY2ZDg2YjUxYjRiMzAwZTY2MDQxZmUzODg2YQ
+</code></pre>
+
+<p>I&rsquo;ll refer to this long code parameter as CODE in the future. This code is stored on the Provider side, and once you request for the token, it can uniquely identify the client which made request and the user.</p>
+
+<p>It&rsquo;s time to request the token</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&amp;client_secret=CLIENT_SECRET&amp;grant_type=authorization_code&amp;redirect_uri=http%3A%2F%2Fclinet.local%2F&amp;code=CODE
+</code></pre>
+
+<p>Most probably this request will fail. That&rsquo;s because CODE expires rather quickly. Fear not, just request first URL, repeat the process, prepare the second url in the text editor of your choice, copy in the code rather quickly, and you will get the desired result.</p>
+
+<p>It&rsquo;s a JSON which contains access_token and looks like this</p>
+
+<pre><code>{"access_token":"NjlmNDNiZTU4ZDY3ZGFlYTI5MGEzNDcxZWVmZDU4Y2E1NGJmZTJlMjNjNzc2M2E0MmZlZTk2ZjliMWE0MDQyNw","expires_in":3600,"token_type":"bearer","scope":null,"refresh_token":"ZGU2NzlhOTQ2MmRlY2YyYjAyMjBkYmJmMmJhMDllNTgyNmJkNmQxOWZlNGQ4NzczY2RiMThlNmRhMjBiYjFjNg"}
+</code></pre>
+
+<p>this suggests that access_token expires in 3600 seconds, and to refresh it you have the refresh token. We will discuss how to handle that later on this chapter.</p>
+
+<h2>Implicit Grant</h2>
+
+<p>It&rsquo;s similar to Authorization Code grant, it&rsquo;s just a bit simpler. You just need to make only one request, and you will get the access_token as a part of redirect URL, there&rsquo;s no need for second response. That&rsquo;s for the situations where you trust the user and the client, but you still want the user to identify himself in the browser.</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/auth?client_id=2_1y1zqhh7ws5c8kok8g8w88kkokos0wwswwwowos4o48s48s88w&amp;redirect_uri=http%3A%2F%2Fclinet.local%2F&amp;response_type=token
+</code></pre>
+
+<p>then you will get redirected to</p>
+
+<pre><code>CLIENT_HOST/#access_token=YWZhZWQ5NjQxOTI2ODJmZWE4YjJiYmExZTIxZmE5OWUxOWZjZjgwZDFlZWMwMjkyZDQwZWU1NWI4YWIzODllNQ&amp;expires_in=3600&amp;token_type=bearer&amp;refresh_token=YzQ1YjRhODk2YzJiYTZmMzNiNjI5ZjI2MDI3ZmMwMDg3MjkxMDdhYmE5YjBlYzRlZmM2M2Q0NTM3ZjFmZDZiYQ
+</code></pre>
+
+<h2>Password flow</h2>
+
+<p>Let&rsquo;s say you have no luxury of redirecting user to some website, then handle redirect call, all you have is just an application which is able to send HTTP requests. And you still want to somehow authenticate user on the server side, and all you have is username and password.</p>
+
+<p>Request:</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&amp;client_secret=CLIENT_SECRET&amp;grant_type=password&amp;username=USERNAME&amp;password=PASSWORD
+</code></pre>
+
+<p>Response:</p>
+
+<pre><code>{"access_token":"MjY1MWRhYTAyZDZlOTEyN2EzNTg4MGMwMTcyYjczY2Y0MWI3NzZjODc1OGM2NDdjODgxZjY3YzEyMDdhZjU0Yg","expires_in":3600,"token_type":"bearer","scope":null,"refresh_token":"MDNmNzBmNWQ2NzdhYWVmYjE2NjI3ZjAyZTM4Y2Q1NDRiNDY1YjUyZGE1ZDk0ODZjYmU0MDM0NTQxNjhiZmU3ZA"}
+</code></pre>
+
+<h2>Client Credentials</h2>
+
+<p>This one is the most simplistic flow of them all. You just need to provide CLIENT_ID and CLIENT_SECRET.</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&amp;client_secret=CLIENT_SECRET&amp;grant_type=client_credentials
+</code></pre>
+
+<p>Response will be</p>
+
+<pre><code>{"access_token":"YTk0YTVjZDY0YWI2ZmE0NjRiODQ4OWIyNjZkNjZlMTdiZGZlNmI3MDNjZGQwYTZkMDNiMjliNDg3NWYwZWI0MQ","expires_in":3600,"token_type":"bearer","scope":"user","refresh_token":"ZDU1MDY1OTc4NGNlNzQ5NWFiYTEzZTE1OGY5MWNjMmViYTBiNmRjOTNlY2ExNzAxNWRmZTM1NjI3ZDkwNDdjNQ"}
+</code></pre>
+
+<h2>Refresh flow</h2>
+
+<p>Before I mentioned that access_tokens have a lifetime of one hour, after which they will expire. With every access_token you were provided a refresh_token. You can exchange refresh token and get a new pair of access_token and refresh_token</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&amp;client_secret=CLIENT_SECRET&amp;grant_type=refresh_token&amp;refresh_token=REFRESH_TOKEN
+</code></pre>
+
+<p>response</p>
+
+<pre><code>{"access_token":NEW_ACCESS_TOKEN,"expires_in":3600,"token_type":"bearer","scope":"user","refresh_token":"NEW_REFRESH_TOKEN"}
+</code></pre>
+
+<h2>Let&rsquo;s not fail or using the access_token</h2>
+
+<p>Remember our failed attempt to request an API at the beginning of the article? Let&rsquo;s try again.</p>
+
+<p>Request</p>
+
+<pre><code>PROVIDER_HOST/api/articles?access_token=ACCESS_TOKEN
+</code></pre>
+
+<p>Response</p>
+
+<pre><code>["article1","article2","article3"]
+</code></pre>
+
+<p>Seems like a proper response, does it?</p>
+
+<p>Let&rsquo;s try the other request, which is supposed to maintain user session with the access_token.</p>
+
+<p>Request</p>
+
+<pre><code>PROVIDER_HOST/api/user?access_token=ACCESS_TOKEN
+</code></pre>
+
+<p>If you obtained your access_token through Authorization Code, Implicit Grant or Password, you should see a JSON representation of the user object.</p>
+
+<pre><code>{"id":1,"username":"user1"}
+</code></pre>
+
+<p>If that was the Client Credentials, ACCESS_TOKEN doesn&rsquo;t contain any user information association with it, therefore there can&rsquo;t be any user information retrieved, as the response suggests</p>
+
+<pre><code>{"message":"User is not identified"}
+</code></pre>
+
+<p>In the next part we will define a custom Grant type which allows us to retrieve access_token based on API Key.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Armen Mkrtchyan</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-18T14:35:00+02:00" pubdate data-updated="true">Jul 18<span>th</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/oauth/'>OAuth</a>, <a class='category' href='/blog/categories/symfony2/'>Symfony2</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://iamtankist.github.io/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/" data-via="" data-counturl="http://iamtankist.github.io/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/" title="Previous Post: OAuth2 Explained: Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle">&laquo; OAuth2 Explained: Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/" title="Next Post: OAuth2 Explained: Part 4 - Implementing Custom Grant Type with Symfony2 and FOSOAuthServerBundle">OAuth2 Explained: Part 4 - Implementing Custom Grant Type with Symfony2 and FOSOAuthServerBundle &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">OAuth2 Explained: Part 4 - Implementing Custom Grant Type With Symfony2 and FOSOAuthServerBundle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">OAuth2 Explained: Part 3 - Using OAuth2 With Your Bare Hands</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">OAuth2 Explained: Part 2 - Setting Up OAuth2 With Symfony2 Using FOSOAuthServerBundle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/">OAuth2 Explained: Part 1 - Principles and Terminology</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - Armen Mkrtchyan -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'iamtankist';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://iamtankist.github.io/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/';
+        var disqus_url = 'http://iamtankist.github.io/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

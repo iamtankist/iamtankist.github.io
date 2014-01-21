@@ -1,0 +1,1888 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Yet Another Tecnical Blog]]></title>
+  <link href="http://iamtankist.github.io/atom.xml" rel="self"/>
+  <link href="http://iamtankist.github.io/"/>
+  <updated>2014-01-21T13:17:26+01:00</updated>
+  <id>http://iamtankist.github.io/</id>
+  <author>
+    <name><![CDATA[Armen Mkrtchyan]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[OAuth2 Explained: Part 4 - Implementing Custom Grant Type with Symfony2 and FOSOAuthServerBundle]]></title>
+    <link href="http://iamtankist.github.io/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/"/>
+    <updated>2013-08-20T14:05:00+02:00</updated>
+    <id>http://iamtankist.github.io/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle</id>
+    <content type="html"><![CDATA[<ul>
+<li><a href="http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/">Part 1 &ndash; Principles and Terminology</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
+<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+</ul>
+
+
+<h1>We need something custom</h1>
+
+<p>In the previous part we have tested several standard grant-types that come out-of the box with FOSOAuthServerBundle, but probably you will need something more specific for your application. For example it is common to assign specific user API keys to allow access to the application. That way you don&rsquo;t expose user password to the API on the other you can control API keys, make them expire, revoke, etc.</p>
+
+<p>It&rsquo;s possible to define your custom grant-type, which will authenticate the user based on his API key.</p>
+
+<h2>Preparations</h2>
+
+<p>First, let&rsquo;s modify the User entity. It needs to hold the API key from now on.</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">namespace</span> <span class="nx">Acme</span><span class="o">/</span><span class="nx">DemoBundle</span><span class="o">/</span><span class="nx">Entity</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony</span><span class="o">/</span><span class="nx">Component</span><span class="o">/</span><span class="nx">Security</span><span class="o">/</span><span class="nx">Core</span><span class="o">/</span><span class="nx">User</span><span class="o">/</span><span class="nx">UserInterface</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Doctrine</span><span class="o">/</span><span class="nx">ORM</span><span class="o">/</span><span class="nx">Mapping</span> <span class="k">as</span> <span class="nx">ORM</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="sd">/**</span>
+</span><span class='line'><span class="sd"> * Acme/UserBundle/Entity/User</span>
+</span><span class='line'><span class="sd"> *</span>
+</span><span class='line'><span class="sd"> * @ORM/Table(name=&quot;acme_users&quot;)</span>
+</span><span class='line'><span class="sd"> * @ORM/Entity(repositoryClass=&quot;Acme/DemoBundle/Repository/UserRepository&quot;)</span>
+</span><span class='line'><span class="sd"> */</span>
+</span><span class='line'><span class="k">class</span> <span class="nc">User</span> <span class="k">implements</span> <span class="nx">UserInterface</span><span class="p">,</span> <span class="o">/</span><span class="nx">Serializable</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// ... many other great properties on the class</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM/Column(type=&quot;string&quot;, length=32)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">private</span> <span class="nv">$apiKey</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @param mixed $apiKey</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">setApiKey</span><span class="p">(</span><span class="nv">$apiKey</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">apiKey</span> <span class="o">=</span> <span class="nv">$apiKey</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @return mixed</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">getApiKey</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">apiKey</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I&rsquo;ll use built-in doctrine command which ships with Symfony2 Standard Edition for the simplicity</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>php app/console doctrine:schema:update --force
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>but for the project which will hit the Internets I would highly recommend to use <a href="https://github.com/doctrine/DoctrineMigrationsBundle">Doctrine Migrations</a> instead.</p>
+
+<p>Use your favorite DB management tool to set some random api keys to some users on the user table.</p>
+
+<p>Now it&rsquo;s time to get to the topic</p>
+
+<h2>Implementing custom Grant Type</h2>
+
+<p>You will need a class which implements the logic for verifying the provided apiKey agains database.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// src/Acme/DemoBundle/OAuth/ApiKeyGrantExtension.php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">namespace</span> <span class="nx">Acme\DemoBundle\OAuth</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="nx">Doctrine\Common\Persistence\ObjectRepository</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">FOS\OAuthServerBundle\Storage\GrantExtensionInterface</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">OAuth2\Model\IOAuth2Client</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="sd">/**</span>
+</span><span class='line'><span class="sd"> * Play at bingo to get an access_token: May the luck be with you!</span>
+</span><span class='line'><span class="sd"> */</span>
+</span><span class='line'><span class="k">class</span> <span class="nc">ApiKeyGrantExtension</span> <span class="k">implements</span> <span class="nx">GrantExtensionInterface</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">private</span> <span class="nv">$userRepository</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">__construct</span><span class="p">(</span><span class="nx">ObjectRepository</span> <span class="nv">$userRepository</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span> <span class="o">=</span> <span class="nv">$userRepository</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/*</span>
+</span><span class='line'><span class="cm">     * {@inheritdoc}</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">checkGrantExtension</span><span class="p">(</span><span class="nx">IOAuth2Client</span> <span class="nv">$client</span><span class="p">,</span> <span class="k">array</span> <span class="nv">$inputData</span><span class="p">,</span> <span class="k">array</span> <span class="nv">$authHeaders</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nv">$user</span> <span class="o">=</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span><span class="o">-&gt;</span><span class="na">findOneByApiKey</span><span class="p">(</span><span class="nv">$inputData</span><span class="p">[</span><span class="s1">&#39;api_key&#39;</span><span class="p">]);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="nv">$user</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="c1">//if you need to return access token with associated user</span>
+</span><span class='line'>            <span class="k">return</span> <span class="k">array</span><span class="p">(</span>
+</span><span class='line'>                <span class="s1">&#39;data&#39;</span> <span class="o">=&gt;</span> <span class="nv">$user</span>
+</span><span class='line'>            <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="c1">//if you need an anonymous user token</span>
+</span><span class='line'>            <span class="k">return</span> <span class="k">true</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="k">false</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we need to register this class as a service tagged as grant extension in DIC</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'>  // src/Acme/DemoBundle/Resources/config/services.xml
+</span><span class='line'>
+</span><span class='line'>  <span class="nt">&lt;services&gt;</span>
+</span><span class='line'>
+</span><span class='line'>      ...
+</span><span class='line'>
+</span><span class='line'>      <span class="nt">&lt;service</span> <span class="na">id=</span><span class="s">&quot;platform.grant_type.api_key&quot;</span> <span class="na">class=</span><span class="s">&quot;Acme\DemoBundle\OAuth\ApiKeyGrantExtension&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>          <span class="nt">&lt;tag</span> <span class="na">name=</span><span class="s">&quot;fos_oauth_server.grant_extension&quot;</span> <span class="na">uri=</span><span class="s">&quot;http://platform.local/grants/api_key&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>          <span class="nt">&lt;argument</span> <span class="na">type=</span><span class="s">&quot;service&quot;</span> <span class="na">id=</span><span class="s">&quot;platform.user.repository&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/service&gt;</span>
+</span><span class='line'>
+</span><span class='line'>      ...
+</span><span class='line'>
+</span><span class='line'>  <span class="nt">&lt;/services&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Note: <a href="http://platform.local/grants/api_key">http://platform.local/grants/api_key</a> it must not be a valid url that leads you somewhere, it&rsquo;s just a way to namespace your URL according to the standard. Also it&rsquo;s a reference to your extension as you will see in the next section.</p>
+
+<h2>Time to test</h2>
+
+<p>First you need to create a client which grants this custom grant extension</p>
+
+<pre><code>php app/console acme:oauth-server:client:create --grant-type="http://platform.local/grants/api_key" 
+</code></pre>
+
+<p>Expected output looks like this</p>
+
+<pre><code>Added a new client with public id CLIENT_ID, secret CLIENT_SECRET
+</code></pre>
+
+<p>Next we need to fire an http request against the oauth provider with this credentials and api key</p>
+
+<pre><code>curl -XGET "http://portal.local/oauth/v2/token?grant_type=http://platform.local/grants/api_key&amp;client_id=CLIENT_ID&amp;client_secret=CLIENT_SECRET&amp;api_key=API_KEY"
+</code></pre>
+
+<p>If the API_KEY is one of the keys you had set on the user table, you will get success response</p>
+
+<pre><code>{"access_token":"OTQ2OTNkY2VkMmI3MzQ4MDUwMTY2YjUwOWZhMjBjYmM5NGI2N2UwNDIwNDhkNTY2MWNlNTk1MmE5MmNhMTJjNA","expires_in":3600,"token_type":"bearer","scope":null,"refresh_token":"NTBkZDgxOGJiYmExYzZhNzQ5MmMwNTZjNjAyYzQzMmU1OTQ2NmRmMzljYzQxNmM3OGQ5ZDhhMjRhMjZiZTZmMA"}
+</code></pre>
+
+<p>otherwise an</p>
+
+<pre><code>{"error":"invalid_grant"}
+</code></pre>
+
+<h2>Summary</h2>
+
+<p>As you see implementing custom authorisation mechanisms with OAuth2 and Symfony2 using FOSOAuthServerBundle is really easy. One other example when you need this, is when you implement an API which supports a mobile app, and one of the features is Facebook login on the mobile app. Then you need to somehow login user on the backend as well. The correct way to do this is passing a facebook access token through a custom grant extension to the backend, backend then makes a request to the facebook, to make sure the token is correct, finds out user from it, and gives back the mobile app an access_token with a backend user associated to it.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[OAuth2 Explained: Part 3 - Using OAuth2 with your bare hands]]></title>
+    <link href="http://iamtankist.github.io/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/"/>
+    <updated>2013-07-18T14:35:00+02:00</updated>
+    <id>http://iamtankist.github.io/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands</id>
+    <content type="html"><![CDATA[<ul>
+<li><a href="http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/">Part 1 &ndash; Principles and Terminology</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
+<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+</ul>
+
+
+<h2>Preparations</h2>
+
+<p>We&rsquo;ll need a controller that mimics a dummy API behavior for us.</p>
+
+<!-- more -->
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Controller</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Bundle\FrameworkBundle\Controller\Controller</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Component\HttpFoundation\JsonResponse</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">ApiController</span> <span class="k">extends</span> <span class="nx">Controller</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">articlesAction</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nv">$articles</span> <span class="o">=</span> <span class="k">array</span><span class="p">(</span><span class="s1">&#39;article1&#39;</span><span class="p">,</span> <span class="s1">&#39;article2&#39;</span><span class="p">,</span> <span class="s1">&#39;article3&#39;</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">return</span> <span class="k">new</span> <span class="nx">JsonResponse</span><span class="p">(</span><span class="nv">$articles</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">userAction</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nv">$user</span> <span class="o">=</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">container</span><span class="o">-&gt;</span><span class="na">get</span><span class="p">(</span><span class="s1">&#39;security.context&#39;</span><span class="p">)</span><span class="o">-&gt;</span><span class="na">getToken</span><span class="p">()</span><span class="o">-&gt;</span><span class="na">getUser</span><span class="p">();</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="nv">$user</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="k">new</span> <span class="nx">JsonResponse</span><span class="p">(</span><span class="k">array</span><span class="p">(</span>
+</span><span class='line'>                <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="nv">$user</span><span class="o">-&gt;</span><span class="na">getId</span><span class="p">(),</span>
+</span><span class='line'>                <span class="s1">&#39;username&#39;</span> <span class="o">=&gt;</span> <span class="nv">$user</span><span class="o">-&gt;</span><span class="na">getUsername</span><span class="p">()</span>
+</span><span class='line'>            <span class="p">));</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="k">new</span> <span class="nx">JsonResponse</span><span class="p">(</span><span class="k">array</span><span class="p">(</span>
+</span><span class='line'>            <span class="s1">&#39;message&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;User is not identified&#39;</span>
+</span><span class='line'>        <span class="p">));</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Let&rsquo;s Fail!</h2>
+
+<p>Please keep in mind, that the point is to obtain access_token.</p>
+
+<p>Why? Request</p>
+
+<pre><code>PROVIDER_HOST/api/articles
+</code></pre>
+
+<p>What?</p>
+
+<pre><code>{"error":"access_denied","error_description":"OAuth2 authentication required"}
+</code></pre>
+
+<p>Right. That&rsquo;s why. Our API is protected, we don&rsquo;t let everybody in. Let&rsquo;s try to do this again once we have the access_token at the end of the chapter.</p>
+
+<h2>Registering OAuth Client</h2>
+
+<p>First we need to create a Client and allow all possible grant types for it. Here&rsquo;s how to do that. Navigate to the project root of the provider (the one we created in <a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">previous part</a>) and then execute the following command. Client host represents a URL, where your client application is deployed. You will get redirected here if everything went as planned.</p>
+
+<pre><code>php app/console acme:oauth-server:client:create --redirect-uri="CLIENT_HOST" --grant-type="authorization_code" --grant-type="password" --grant-type="refresh-token" --grant-type="token" --grant-type="client_credentials"
+</code></pre>
+
+<p>command should respond with something like</p>
+
+<pre><code>Added a new client with public id 2_1y1zqhh7ws5c8kok8g8w88kkokos0wwswwwowos4o48s48s88w, secret 16eqpwofy5dwo4wggk4s40s80sgcs4gc0cwgwsc8k8w0k8sks4
+</code></pre>
+
+<p>Please keep those values somewhere in an easy accessible place, we will need those during this tutorial.
+To keep URLs short and readable I&rsquo;ll refer to those as CLIENT_ID and CLIENT_SECRET in the future.</p>
+
+<p>Let&rsquo;s start from the more complicated grant types and move on to the simpler ones.</p>
+
+<h2>Authorization Code</h2>
+
+<p>That&rsquo;s the most commonly used one, recommended to authorize end customers. A good example is the Facebook Login for websites. Here&rsquo;s how it works.</p>
+
+<p>Request this url in the browser:</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/auth?client_id=CLIENT_ID&amp;response_type=code&amp;redirect_uri=CLIENT_HOST
+</code></pre>
+
+<p>note: redirect_uri should be identical to the one provided on client creation, otherwise you will get a corresponding error message.</p>
+
+<p>The page you are requesting will offer you a login, then authorization of the client permissions, once you confirm everything it will redirect you back to the url you provided in redirect_url. In our case, redirect will look like</p>
+
+<pre><code>CLIENT_HOST/?code=Yjk2MWU5YjVhODBiN2I0ZDRkYmQ1OGM0NGY4MmUyOGM2NDQ2MmY2ZDg2YjUxYjRiMzAwZTY2MDQxZmUzODg2YQ
+</code></pre>
+
+<p>I&rsquo;ll refer to this long code parameter as CODE in the future. This code is stored on the Provider side, and once you request for the token, it can uniquely identify the client which made request and the user.</p>
+
+<p>It&rsquo;s time to request the token</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&amp;client_secret=CLIENT_SECRET&amp;grant_type=authorization_code&amp;redirect_uri=http%3A%2F%2Fclinet.local%2F&amp;code=CODE
+</code></pre>
+
+<p>Most probably this request will fail. That&rsquo;s because CODE expires rather quickly. Fear not, just request first URL, repeat the process, prepare the second url in the text editor of your choice, copy in the code rather quickly, and you will get the desired result.</p>
+
+<p>It&rsquo;s a JSON which contains access_token and looks like this</p>
+
+<pre><code>{"access_token":"NjlmNDNiZTU4ZDY3ZGFlYTI5MGEzNDcxZWVmZDU4Y2E1NGJmZTJlMjNjNzc2M2E0MmZlZTk2ZjliMWE0MDQyNw","expires_in":3600,"token_type":"bearer","scope":null,"refresh_token":"ZGU2NzlhOTQ2MmRlY2YyYjAyMjBkYmJmMmJhMDllNTgyNmJkNmQxOWZlNGQ4NzczY2RiMThlNmRhMjBiYjFjNg"}
+</code></pre>
+
+<p>this suggests that access_token expires in 3600 seconds, and to refresh it you have the refresh token. We will discuss how to handle that later on this chapter.</p>
+
+<h2>Implicit Grant</h2>
+
+<p>It&rsquo;s similar to Authorization Code grant, it&rsquo;s just a bit simpler. You just need to make only one request, and you will get the access_token as a part of redirect URL, there&rsquo;s no need for second response. That&rsquo;s for the situations where you trust the user and the client, but you still want the user to identify himself in the browser.</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/auth?client_id=2_1y1zqhh7ws5c8kok8g8w88kkokos0wwswwwowos4o48s48s88w&amp;redirect_uri=http%3A%2F%2Fclinet.local%2F&amp;response_type=token
+</code></pre>
+
+<p>then you will get redirected to</p>
+
+<pre><code>CLIENT_HOST/#access_token=YWZhZWQ5NjQxOTI2ODJmZWE4YjJiYmExZTIxZmE5OWUxOWZjZjgwZDFlZWMwMjkyZDQwZWU1NWI4YWIzODllNQ&amp;expires_in=3600&amp;token_type=bearer&amp;refresh_token=YzQ1YjRhODk2YzJiYTZmMzNiNjI5ZjI2MDI3ZmMwMDg3MjkxMDdhYmE5YjBlYzRlZmM2M2Q0NTM3ZjFmZDZiYQ
+</code></pre>
+
+<h2>Password flow</h2>
+
+<p>Let&rsquo;s say you have no luxury of redirecting user to some website, then handle redirect call, all you have is just an application which is able to send HTTP requests. And you still want to somehow authenticate user on the server side, and all you have is username and password.</p>
+
+<p>Request:</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&amp;client_secret=CLIENT_SECRET&amp;grant_type=password&amp;username=USERNAME&amp;password=PASSWORD
+</code></pre>
+
+<p>Response:</p>
+
+<pre><code>{"access_token":"MjY1MWRhYTAyZDZlOTEyN2EzNTg4MGMwMTcyYjczY2Y0MWI3NzZjODc1OGM2NDdjODgxZjY3YzEyMDdhZjU0Yg","expires_in":3600,"token_type":"bearer","scope":null,"refresh_token":"MDNmNzBmNWQ2NzdhYWVmYjE2NjI3ZjAyZTM4Y2Q1NDRiNDY1YjUyZGE1ZDk0ODZjYmU0MDM0NTQxNjhiZmU3ZA"}
+</code></pre>
+
+<h2>Client Credentials</h2>
+
+<p>This one is the most simplistic flow of them all. You just need to provide CLIENT_ID and CLIENT_SECRET.</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&amp;client_secret=CLIENT_SECRET&amp;grant_type=client_credentials
+</code></pre>
+
+<p>Response will be</p>
+
+<pre><code>{"access_token":"YTk0YTVjZDY0YWI2ZmE0NjRiODQ4OWIyNjZkNjZlMTdiZGZlNmI3MDNjZGQwYTZkMDNiMjliNDg3NWYwZWI0MQ","expires_in":3600,"token_type":"bearer","scope":"user","refresh_token":"ZDU1MDY1OTc4NGNlNzQ5NWFiYTEzZTE1OGY5MWNjMmViYTBiNmRjOTNlY2ExNzAxNWRmZTM1NjI3ZDkwNDdjNQ"}
+</code></pre>
+
+<h2>Refresh flow</h2>
+
+<p>Before I mentioned that access_tokens have a lifetime of one hour, after which they will expire. With every access_token you were provided a refresh_token. You can exchange refresh token and get a new pair of access_token and refresh_token</p>
+
+<pre><code>PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&amp;client_secret=CLIENT_SECRET&amp;grant_type=refresh_token&amp;refresh_token=REFRESH_TOKEN
+</code></pre>
+
+<p>response</p>
+
+<pre><code>{"access_token":NEW_ACCESS_TOKEN,"expires_in":3600,"token_type":"bearer","scope":"user","refresh_token":"NEW_REFRESH_TOKEN"}
+</code></pre>
+
+<h2>Let&rsquo;s not fail or using the access_token</h2>
+
+<p>Remember our failed attempt to request an API at the beginning of the article? Let&rsquo;s try again.</p>
+
+<p>Request</p>
+
+<pre><code>PROVIDER_HOST/api/articles?access_token=ACCESS_TOKEN
+</code></pre>
+
+<p>Response</p>
+
+<pre><code>["article1","article2","article3"]
+</code></pre>
+
+<p>Seems like a proper response, does it?</p>
+
+<p>Let&rsquo;s try the other request, which is supposed to maintain user session with the access_token.</p>
+
+<p>Request</p>
+
+<pre><code>PROVIDER_HOST/api/user?access_token=ACCESS_TOKEN
+</code></pre>
+
+<p>If you obtained your access_token through Authorization Code, Implicit Grant or Password, you should see a JSON representation of the user object.</p>
+
+<pre><code>{"id":1,"username":"user1"}
+</code></pre>
+
+<p>If that was the Client Credentials, ACCESS_TOKEN doesn&rsquo;t contain any user information association with it, therefore there can&rsquo;t be any user information retrieved, as the response suggests</p>
+
+<pre><code>{"message":"User is not identified"}
+</code></pre>
+
+<p>In the next part we will define a custom Grant type which allows us to retrieve access_token based on API Key.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[OAuth2 Explained: Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle]]></title>
+    <link href="http://iamtankist.github.io/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/"/>
+    <updated>2013-07-17T10:35:00+02:00</updated>
+    <id>http://iamtankist.github.io/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle</id>
+    <content type="html"><![CDATA[<ul>
+<li><a href="http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/">Part 1 &ndash; Principles and Terminology</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
+<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+</ul>
+
+
+<h2>Prerequisites</h2>
+
+<p>Let&rsquo;s assume you already have a project running on Symfony2 with Doctrine2, and you would like to enable some OAuth2 provider functionality on it. In case you still don&rsquo;t have a running Symfony2 installation, please go through <a href="http://symfony.com/doc/current/book/installation.html">Symfony Book: Installation</a> instructions and get a fresh copy of a Symfony2.</p>
+
+<p>Also your project already, most probably, should has a User Entity, if not you can create something like this one.</p>
+
+<!-- more -->
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'>  <span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c1">// src/Acme/DemoBundle/Entity/User.php</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Entity</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\User\UserInterface</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">use</span> <span class="nx">Doctrine\ORM\Mapping</span> <span class="k">as</span> <span class="nx">ORM</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="sd">/**</span>
+</span><span class='line'><span class="sd">  * Acme\UserBundle\Entity\User</span>
+</span><span class='line'><span class="sd">  *</span>
+</span><span class='line'><span class="sd">  * @ORM\Table(name=&quot;acme_users&quot;)</span>
+</span><span class='line'><span class="sd">  * @ORM\Entity(repositoryClass=&quot;Acme\DemoBundle\Repository\UserRepository&quot;)</span>
+</span><span class='line'><span class="sd">  */</span>
+</span><span class='line'>  <span class="k">class</span> <span class="nc">User</span> <span class="k">implements</span> <span class="nx">UserInterface</span><span class="p">,</span> <span class="nx">\Serializable</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @ORM\Column(type=&quot;integer&quot;)</span>
+</span><span class='line'><span class="sd">      * @ORM\Id</span>
+</span><span class='line'><span class="sd">      * @ORM\GeneratedValue(strategy=&quot;AUTO&quot;)</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">private</span> <span class="nv">$id</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @ORM\Column(type=&quot;string&quot;, length=25, unique=true)</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">private</span> <span class="nv">$username</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @ORM\Column(type=&quot;string&quot;, length=25, unique=true)</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">private</span> <span class="nv">$email</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @ORM\Column(type=&quot;string&quot;, length=32)</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">private</span> <span class="nv">$salt</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @ORM\Column(type=&quot;string&quot;, length=40)</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">private</span> <span class="nv">$password</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @ORM\Column(name=&quot;is_active&quot;, type=&quot;boolean&quot;)</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">private</span> <span class="nv">$isActive</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">__construct</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">isActive</span> <span class="o">=</span> <span class="k">true</span><span class="p">;</span>
+</span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">salt</span> <span class="o">=</span> <span class="nb">md5</span><span class="p">(</span><span class="nb">uniqid</span><span class="p">(</span><span class="k">null</span><span class="p">,</span> <span class="k">true</span><span class="p">));</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">getId</span><span class="p">(){</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">id</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @inheritDoc</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">getUsername</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">username</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @inheritDoc</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">setUsername</span><span class="p">(</span><span class="nv">$username</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">username</span> <span class="o">=</span> <span class="nv">$username</span><span class="p">;</span>
+</span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">email</span> <span class="o">=</span> <span class="nv">$username</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @inheritDoc</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">getSalt</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">salt</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">setSalt</span><span class="p">(</span><span class="nv">$salt</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">salt</span> <span class="o">=</span> <span class="nv">$salt</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @inheritDoc</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">getPassword</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">password</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">setPassword</span><span class="p">(</span><span class="nv">$password</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">password</span> <span class="o">=</span> <span class="nv">$password</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @inheritDoc</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">getRoles</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="k">array</span><span class="p">(</span><span class="s1">&#39;ROLE_USER&#39;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @inheritDoc</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">eraseCredentials</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @see \Serializable::serialize()</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">serialize</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nb">serialize</span><span class="p">(</span>
+</span><span class='line'>              <span class="k">array</span><span class="p">(</span>
+</span><span class='line'>                  <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">id</span><span class="p">,</span>
+</span><span class='line'>              <span class="p">)</span>
+</span><span class='line'>          <span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="sd">/**</span>
+</span><span class='line'><span class="sd">      * @see \Serializable::unserialize()</span>
+</span><span class='line'><span class="sd">      */</span>
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">unserialize</span><span class="p">(</span><span class="nv">$serialized</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">list</span> <span class="p">(</span>
+</span><span class='line'>              <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">id</span><span class="p">,</span>
+</span><span class='line'>              <span class="p">)</span> <span class="o">=</span> <span class="nb">unserialize</span><span class="p">(</span><span class="nv">$serialized</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We are going to need a user provider as well.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'>  <span class="c1">// src/Acme/DemoBundle/Provider/UserProvider.php</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Provider</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\User\UserInterface</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\User\UserProviderInterface</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\Exception\UsernameNotFoundException</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\Exception\UnsupportedUserException</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">use</span> <span class="nx">Doctrine\Common\Persistence\ObjectRepository</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">use</span> <span class="nx">Doctrine\ORM\NoResultException</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">class</span> <span class="nc">UserProvider</span> <span class="k">implements</span> <span class="nx">UserProviderInterface</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="k">protected</span> <span class="nv">$userRepository</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">__construct</span><span class="p">(</span><span class="nx">ObjectRepository</span> <span class="nv">$userRepository</span><span class="p">){</span>
+</span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span> <span class="o">=</span> <span class="nv">$userRepository</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">loadUserByUsername</span><span class="p">(</span><span class="nv">$username</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="nv">$q</span> <span class="o">=</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span>
+</span><span class='line'>              <span class="o">-&gt;</span><span class="na">createQueryBuilder</span><span class="p">(</span><span class="s1">&#39;u&#39;</span><span class="p">)</span>
+</span><span class='line'>              <span class="o">-&gt;</span><span class="na">where</span><span class="p">(</span><span class="s1">&#39;u.username = :username OR u.email = :email&#39;</span><span class="p">)</span>
+</span><span class='line'>              <span class="o">-&gt;</span><span class="na">setParameter</span><span class="p">(</span><span class="s1">&#39;username&#39;</span><span class="p">,</span> <span class="nv">$username</span><span class="p">)</span>
+</span><span class='line'>              <span class="o">-&gt;</span><span class="na">setParameter</span><span class="p">(</span><span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="nv">$username</span><span class="p">)</span>
+</span><span class='line'>              <span class="o">-&gt;</span><span class="na">getQuery</span><span class="p">();</span>
+</span><span class='line'>  
+</span><span class='line'>          <span class="k">try</span> <span class="p">{</span>
+</span><span class='line'>              <span class="nv">$user</span> <span class="o">=</span> <span class="nv">$q</span><span class="o">-&gt;</span><span class="na">getSingleResult</span><span class="p">();</span>
+</span><span class='line'>          <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">NoResultException</span> <span class="nv">$e</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="nv">$message</span> <span class="o">=</span> <span class="nb">sprintf</span><span class="p">(</span>
+</span><span class='line'>                  <span class="s1">&#39;Unable to find an active admin AcmeDemoBundle:User object identified by &quot;%s&quot;.&#39;</span><span class="p">,</span>
+</span><span class='line'>                  <span class="nv">$username</span>
+</span><span class='line'>              <span class="p">);</span>
+</span><span class='line'>              <span class="k">throw</span> <span class="k">new</span> <span class="nx">UsernameNotFoundException</span><span class="p">(</span><span class="nv">$message</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nv">$e</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>          <span class="k">return</span> <span class="nv">$user</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">refreshUser</span><span class="p">(</span><span class="nx">UserInterface</span> <span class="nv">$user</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="nv">$class</span> <span class="o">=</span> <span class="nb">get_class</span><span class="p">(</span><span class="nv">$user</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nv">$this</span><span class="o">-&gt;</span><span class="na">supportsClass</span><span class="p">(</span><span class="nv">$class</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>              <span class="k">throw</span> <span class="k">new</span> <span class="nx">UnsupportedUserException</span><span class="p">(</span>
+</span><span class='line'>                  <span class="nb">sprintf</span><span class="p">(</span>
+</span><span class='line'>                      <span class="s1">&#39;Instances of &quot;%s&quot; are not supported.&#39;</span><span class="p">,</span>
+</span><span class='line'>                      <span class="nv">$class</span>
+</span><span class='line'>                  <span class="p">)</span>
+</span><span class='line'>              <span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span><span class="o">-&gt;</span><span class="na">find</span><span class="p">(</span><span class="nv">$user</span><span class="o">-&gt;</span><span class="na">getId</span><span class="p">());</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">supportsClass</span><span class="p">(</span><span class="nv">$class</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span><span class="o">-&gt;</span><span class="na">getClassName</span><span class="p">()</span> <span class="o">===</span> <span class="nv">$class</span>
+</span><span class='line'>          <span class="o">||</span> <span class="nb">is_subclass_of</span><span class="p">(</span><span class="nv">$class</span><span class="p">,</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span><span class="o">-&gt;</span><span class="na">getClassName</span><span class="p">());</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now register the user manager, repository and provider in the Dependency Injection Container</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="c">&lt;!-- src/Acme/DemoBundle/Resources/config/services.xml --&gt;</span>
+</span><span class='line'><span class="nt">&lt;parameters&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;parameter</span> <span class="na">key=</span><span class="s">&quot;platform.entity.user.class&quot;</span><span class="nt">&gt;</span>Acme\DemoBundle\Entity\User<span class="nt">&lt;/parameter&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;parameter</span> <span class="na">key=</span><span class="s">&quot;platform.user.provider.class&quot;</span><span class="nt">&gt;</span>Acme\DemoBundle\Provider\UserProvider<span class="nt">&lt;/parameter&gt;</span>
+</span><span class='line'><span class="nt">&lt;/parameters&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nt">&lt;services&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;service</span> <span class="na">id=</span><span class="s">&quot;platform.user.manager&quot;</span> <span class="na">class=</span><span class="s">&quot;Doctrine\ORM\EntityManager&quot;</span>
+</span><span class='line'>             <span class="na">factory-service=</span><span class="s">&quot;doctrine&quot;</span> <span class="na">factory-method=</span><span class="s">&quot;getManagerForClass&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;argument&gt;</span>%platform.entity.user.class%<span class="nt">&lt;/argument&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/service&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nt">&lt;service</span> <span class="na">id=</span><span class="s">&quot;platform.user.repository&quot;</span>
+</span><span class='line'>             <span class="na">class=</span><span class="s">&quot;Acme\DemoBundle\Repository\UserRepository&quot;</span>
+</span><span class='line'>             <span class="na">factory-service=</span><span class="s">&quot;platform.user.manager&quot;</span> <span class="na">factory-method=</span><span class="s">&quot;getRepository&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;argument&gt;</span>%platform.entity.user.class%<span class="nt">&lt;/argument&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/service&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nt">&lt;service</span> <span class="na">id=</span><span class="s">&quot;platform.user.provider&quot;</span> <span class="na">class=</span><span class="s">&quot;%platform.user.provider.class%&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;argument</span> <span class="na">type=</span><span class="s">&quot;service&quot;</span> <span class="na">id=</span><span class="s">&quot;platform.user.repository&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/service&gt;</span>
+</span><span class='line'><span class="nt">&lt;/services&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, now we are good to go with setting up OAuthServerBundle on our platform.</p>
+
+<h2>Installing FOSOAuthServerBundle</h2>
+
+<p>To install FOSOauthServerBundle, execute the following in your command line:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'> php composer.phar require friendsofsymfony/oauth-server-bundle dev-master
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This will include the package to the composer.json and install it.</p>
+
+<p>Now you need to enable this bundle in the Kernel:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'><span class="c1">// app/AppKernel.php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">public</span> <span class="k">function</span> <span class="nf">registerBundles</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="nv">$bundles</span> <span class="o">=</span> <span class="k">array</span><span class="p">(</span>
+</span><span class='line'>        <span class="c1">// ...</span>
+</span><span class='line'>        <span class="k">new</span> <span class="nx">FOS\OAuthServerBundle\FOSOAuthServerBundle</span><span class="p">(),</span>
+</span><span class='line'>    <span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we need to create several additional entities.</p>
+
+<h3>Client Entity</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="c1">// src/Acme/DemoBundle/Entity/Client.php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Entity</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="nx">FOS\OAuthServerBundle\Entity\Client</span> <span class="k">as</span> <span class="nx">BaseClient</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Doctrine\ORM\Mapping</span> <span class="k">as</span> <span class="nx">ORM</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="sd">/**</span>
+</span><span class='line'><span class="sd"> * @ORM\Entity</span>
+</span><span class='line'><span class="sd"> */</span>
+</span><span class='line'><span class="k">class</span> <span class="nc">Client</span> <span class="k">extends</span> <span class="nx">BaseClient</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM\Id</span>
+</span><span class='line'><span class="sd">     * @ORM\Column(type=&quot;integer&quot;)</span>
+</span><span class='line'><span class="sd">     * @ORM\GeneratedValue(strategy=&quot;AUTO&quot;)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="nv">$id</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">__construct</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="k">parent</span><span class="o">::</span><span class="na">__construct</span><span class="p">();</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>AccessToken Entity</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'><span class="c1">// src/Acme/DemoBundle/Entity/AccessToken.php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Entity</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="nx">FOS\OAuthServerBundle\Entity\AccessToken</span> <span class="k">as</span> <span class="nx">BaseAccessToken</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Doctrine\ORM\Mapping</span> <span class="k">as</span> <span class="nx">ORM</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="sd">/**</span>
+</span><span class='line'><span class="sd"> * @ORM\Entity</span>
+</span><span class='line'><span class="sd"> */</span>
+</span><span class='line'><span class="k">class</span> <span class="nc">AccessToken</span> <span class="k">extends</span> <span class="nx">BaseAccessToken</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM\Id</span>
+</span><span class='line'><span class="sd">     * @ORM\Column(type=&quot;integer&quot;)</span>
+</span><span class='line'><span class="sd">     * @ORM\GeneratedValue(strategy=&quot;AUTO&quot;)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="nv">$id</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM\ManyToOne(targetEntity=&quot;Client&quot;)</span>
+</span><span class='line'><span class="sd">     * @ORM\JoinColumn(nullable=false)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="nv">$client</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM\ManyToOne(targetEntity=&quot;User&quot;)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="nv">$user</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>RefreshToken Entity</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'><span class="c1">// src/Acme/DemoBundle/Entity/RefreshToken.php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Entity</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="nx">FOS\OAuthServerBundle\Entity\RefreshToken</span> <span class="k">as</span> <span class="nx">BaseRefreshToken</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Doctrine\ORM\Mapping</span> <span class="k">as</span> <span class="nx">ORM</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="sd">/**</span>
+</span><span class='line'><span class="sd"> * @ORM\Entity</span>
+</span><span class='line'><span class="sd"> */</span>
+</span><span class='line'><span class="k">class</span> <span class="nc">RefreshToken</span> <span class="k">extends</span> <span class="nx">BaseRefreshToken</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM\Id</span>
+</span><span class='line'><span class="sd">     * @ORM\Column(type=&quot;integer&quot;)</span>
+</span><span class='line'><span class="sd">     * @ORM\GeneratedValue(strategy=&quot;AUTO&quot;)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="nv">$id</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM\ManyToOne(targetEntity=&quot;Client&quot;)</span>
+</span><span class='line'><span class="sd">     * @ORM\JoinColumn(nullable=false)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="nv">$client</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM\ManyToOne(targetEntity=&quot;User&quot;)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="nv">$user</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>AuthCode Entity</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'><span class="c1">// src/Acme/DemoBundle/Entity/AuthCode.php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Entity</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="nx">FOS\OAuthServerBundle\Entity\AuthCode</span> <span class="k">as</span> <span class="nx">BaseAuthCode</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Doctrine\ORM\Mapping</span> <span class="k">as</span> <span class="nx">ORM</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="sd">/**</span>
+</span><span class='line'><span class="sd"> * @ORM\Entity</span>
+</span><span class='line'><span class="sd"> */</span>
+</span><span class='line'><span class="k">class</span> <span class="nc">AuthCode</span> <span class="k">extends</span> <span class="nx">BaseAuthCode</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM\Id</span>
+</span><span class='line'><span class="sd">     * @ORM\Column(type=&quot;integer&quot;)</span>
+</span><span class='line'><span class="sd">     * @ORM\GeneratedValue(strategy=&quot;AUTO&quot;)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="nv">$id</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM\ManyToOne(targetEntity=&quot;Client&quot;)</span>
+</span><span class='line'><span class="sd">     * @ORM\JoinColumn(nullable=false)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="nv">$client</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">/**</span>
+</span><span class='line'><span class="sd">     * @ORM\ManyToOne(targetEntity=&quot;User&quot;)</span>
+</span><span class='line'><span class="sd">     */</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="nv">$user</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Please pay attention to the user entity namespace, since your User entity might be in other bundle, make sure that namespaces pointing to User entity are correct.</p>
+
+<p>Ok, entities are created, now it&rsquo;s time to create a separate login page for users coming from OAuth direction. I prefer to use separate login forms to handle this, because usually inside the project you have different redirection policies, and in case of OAuth you strictly need to redirect back to referrer. But of course feel free to reuse your already existing login form inside the project, just make sure it redirects you to the right place then.</p>
+
+<p>Here is the controller responsible for the login form</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># src/Acme/DemoBundle/Controller/SecurityController.php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Controller</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Bundle\FrameworkBundle\Controller\Controller</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Component\HttpFoundation\Request</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\SecurityContext</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">SecurityController</span> <span class="k">extends</span> <span class="nx">Controller</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">loginAction</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nv">$session</span> <span class="o">=</span> <span class="nv">$request</span><span class="o">-&gt;</span><span class="na">getSession</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="nv">$request</span><span class="o">-&gt;</span><span class="na">attributes</span><span class="o">-&gt;</span><span class="na">has</span><span class="p">(</span><span class="nx">SecurityContext</span><span class="o">::</span><span class="na">AUTHENTICATION_ERROR</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>            <span class="nv">$error</span> <span class="o">=</span> <span class="nv">$request</span><span class="o">-&gt;</span><span class="na">attributes</span><span class="o">-&gt;</span><span class="na">get</span><span class="p">(</span><span class="nx">SecurityContext</span><span class="o">::</span><span class="na">AUTHENTICATION_ERROR</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">}</span> <span class="k">elseif</span> <span class="p">(</span><span class="k">null</span> <span class="o">!==</span> <span class="nv">$session</span> <span class="o">&amp;&amp;</span> <span class="nv">$session</span><span class="o">-&gt;</span><span class="na">has</span><span class="p">(</span><span class="nx">SecurityContext</span><span class="o">::</span><span class="na">AUTHENTICATION_ERROR</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>            <span class="nv">$error</span> <span class="o">=</span> <span class="nv">$session</span><span class="o">-&gt;</span><span class="na">get</span><span class="p">(</span><span class="nx">SecurityContext</span><span class="o">::</span><span class="na">AUTHENTICATION_ERROR</span><span class="p">);</span>
+</span><span class='line'>            <span class="nv">$session</span><span class="o">-&gt;</span><span class="na">remove</span><span class="p">(</span><span class="nx">SecurityContext</span><span class="o">::</span><span class="na">AUTHENTICATION_ERROR</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>            <span class="nv">$error</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="nv">$error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="nv">$error</span> <span class="o">=</span> <span class="nv">$error</span><span class="o">-&gt;</span><span class="na">getMessage</span><span class="p">(</span>
+</span><span class='line'>            <span class="p">);</span> <span class="c1">// WARNING! Symfony source code identifies this line as a potential security threat.</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="nv">$lastUsername</span> <span class="o">=</span> <span class="p">(</span><span class="k">null</span> <span class="o">===</span> <span class="nv">$session</span><span class="p">)</span> <span class="o">?</span> <span class="s1">&#39;&#39;</span> <span class="o">:</span> <span class="nv">$session</span><span class="o">-&gt;</span><span class="na">get</span><span class="p">(</span><span class="nx">SecurityContext</span><span class="o">::</span><span class="na">LAST_USERNAME</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">render</span><span class="p">(</span>
+</span><span class='line'>            <span class="s1">&#39;AcmeDemoBundle:Security:login.html.twig&#39;</span><span class="p">,</span>
+</span><span class='line'>            <span class="k">array</span><span class="p">(</span>
+</span><span class='line'>                <span class="s1">&#39;last_username&#39;</span> <span class="o">=&gt;</span> <span class="nv">$lastUsername</span><span class="p">,</span>
+</span><span class='line'>                <span class="s1">&#39;error&#39;</span> <span class="o">=&gt;</span> <span class="nv">$error</span><span class="p">,</span>
+</span><span class='line'>            <span class="p">)</span>
+</span><span class='line'>        <span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">public</span> <span class="k">function</span> <span class="nf">loginCheckAction</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>and here is the corresponding minimal template</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'>  <span class="p">{</span><span class="c1"># src/Acme/DemoBundle/Resources/views/Security/login.html.twig #}</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="nx">div</span> <span class="nx">class</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="nx">form</span> <span class="nx">id</span><span class="o">=</span><span class="s2">&quot;login&quot;</span> <span class="nx">class</span><span class="o">=</span><span class="s2">&quot;vertical&quot;</span> <span class="nx">action</span><span class="o">=</span><span class="s2">&quot;&quot;</span> <span class="nx">method</span><span class="o">=</span><span class="s2">&quot;post&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>          <span class="o">&lt;</span><span class="nx">div</span> <span class="nx">class</span><span class="o">=</span><span class="s2">&quot;form_title&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>              <span class="nx">OAuth</span> <span class="nx">Authorization</span>
+</span><span class='line'>          <span class="o">&lt;/</span><span class="nx">div</span><span class="o">&gt;</span>
+</span><span class='line'>          <span class="p">{</span><span class="o">%</span> <span class="k">if</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="o">%</span><span class="p">}</span>
+</span><span class='line'>          <span class="o">&lt;</span><span class="nx">div</span> <span class="nx">class</span><span class="o">=</span><span class="s1">&#39;form_error&#39;</span><span class="o">&gt;</span><span class="p"></span><span class="o">&lt;/</span><span class="nx">div</span><span class="o">&gt;</span>
+</span><span class='line'>          <span class="p">{</span><span class="o">%</span> <span class="k">endif</span> <span class="o">%</span><span class="p">}</span>
+</span><span class='line'>          <span class="o">&lt;</span><span class="nx">div</span> <span class="nx">class</span><span class="o">=</span><span class="s2">&quot;form_item&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>              <span class="o">&lt;</span><span class="nx">div</span> <span class="nx">class</span><span class="o">=</span><span class="s2">&quot;form_label&quot;</span><span class="o">&gt;&lt;</span><span class="nx">label</span> <span class="k">for</span><span class="o">=</span><span class="s2">&quot;username&quot;</span><span class="o">&gt;</span><span class="nx">Username</span><span class="o">&lt;/</span><span class="nx">label</span><span class="o">&gt;:&lt;/</span><span class="nx">div</span><span class="o">&gt;</span>
+</span><span class='line'>              <span class="o">&lt;</span><span class="nx">div</span> <span class="nx">class</span><span class="o">=</span><span class="s2">&quot;form_widget&quot;</span><span class="o">&gt;&lt;</span><span class="nx">input</span> <span class="nx">type</span><span class="o">=</span><span class="s2">&quot;text&quot;</span> <span class="nx">id</span><span class="o">=</span><span class="s2">&quot;username&quot;</span> <span class="nx">name</span><span class="o">=</span><span class="s2">&quot;_username&quot;</span> <span class="o">/&gt;&lt;/</span><span class="nx">div</span><span class="o">&gt;</span>
+</span><span class='line'>          <span class="o">&lt;/</span><span class="nx">div</span><span class="o">&gt;</span>
+</span><span class='line'>          <span class="o">&lt;</span><span class="nx">div</span> <span class="nx">class</span><span class="o">=</span><span class="s2">&quot;form_item&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>              <span class="o">&lt;</span><span class="nx">div</span> <span class="nx">class</span><span class="o">=</span><span class="s2">&quot;form_label&quot;</span><span class="o">&gt;&lt;</span><span class="nx">label</span> <span class="k">for</span><span class="o">=</span><span class="s2">&quot;password&quot;</span><span class="o">&gt;</span><span class="nx">Password</span><span class="o">&lt;/</span><span class="nx">label</span><span class="o">&gt;:&lt;/</span><span class="nx">div</span><span class="o">&gt;</span>
+</span><span class='line'>              <span class="o">&lt;</span><span class="nx">div</span> <span class="nx">class</span><span class="o">=</span><span class="s2">&quot;form_widget&quot;</span><span class="o">&gt;&lt;</span><span class="nx">input</span> <span class="nx">type</span><span class="o">=</span><span class="s2">&quot;password&quot;</span> <span class="nx">id</span><span class="o">=</span><span class="s2">&quot;password&quot;</span> <span class="nx">name</span><span class="o">=</span><span class="s2">&quot;_password&quot;</span> <span class="o">/&gt;&lt;/</span><span class="nx">div</span><span class="o">&gt;</span>
+</span><span class='line'>          <span class="o">&lt;/</span><span class="nx">div</span><span class="o">&gt;</span>
+</span><span class='line'>          <span class="o">&lt;</span><span class="nx">div</span> <span class="nx">class</span><span class="o">=</span><span class="s2">&quot;form_button&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>              <span class="o">&lt;</span><span class="nx">input</span> <span class="nx">type</span><span class="o">=</span><span class="s2">&quot;submit&quot;</span> <span class="nx">id</span><span class="o">=</span><span class="s2">&quot;_submit&quot;</span> <span class="nx">name</span><span class="o">=</span><span class="s2">&quot;_submit&quot;</span> <span class="nx">value</span><span class="o">=</span><span class="s2">&quot;Log In&quot;</span> <span class="o">/&gt;</span>
+</span><span class='line'>          <span class="o">&lt;/</span><span class="nx">div</span><span class="o">&gt;</span>
+</span><span class='line'>      <span class="o">&lt;/</span><span class="nx">form</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="o">&lt;/</span><span class="nx">div</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Configuration</h3>
+
+<p>Following goes into <strong>security.yml</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">security</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">encoders</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">Acme\DemoBundle\Entity\User</span><span class="p-Indicator">:</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">algorithm</span><span class="p-Indicator">:</span>        <span class="l-Scalar-Plain">sha1</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">encode_as_base64</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">false</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">iterations</span><span class="p-Indicator">:</span>       <span class="l-Scalar-Plain">1</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="l-Scalar-Plain">role_hierarchy</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">ROLE_ADMIN</span><span class="p-Indicator">:</span>       <span class="l-Scalar-Plain">ROLE_USER</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">ROLE_SUPER_ADMIN</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">ROLE_ADMIN</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="l-Scalar-Plain">providers</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">user_provider</span><span class="p-Indicator">:</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">id</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">platform.user.provider</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>    <span class="l-Scalar-Plain">firewalls</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">dev</span><span class="p-Indicator">:</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">pattern</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">^/(_(profiler|wdt)|css|images|js)/</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">security</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">false</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="l-Scalar-Plain">login</span><span class="p-Indicator">:</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">pattern</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">^/demo/secured/login$</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">security</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">false</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>        <span class="l-Scalar-Plain">oauth_token</span><span class="p-Indicator">:</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">pattern</span><span class="p-Indicator">:</span>    <span class="l-Scalar-Plain">^/oauth/v2/token</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">security</span><span class="p-Indicator">:</span>   <span class="l-Scalar-Plain">false</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="l-Scalar-Plain">secured_area</span><span class="p-Indicator">:</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">pattern</span><span class="p-Indicator">:</span>    <span class="l-Scalar-Plain">^/demo/secured/</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">form_login</span><span class="p-Indicator">:</span>
+</span><span class='line'>                <span class="l-Scalar-Plain">provider</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">user_provider</span>
+</span><span class='line'>                <span class="l-Scalar-Plain">check_path</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">_security_check</span>
+</span><span class='line'>                <span class="l-Scalar-Plain">login_path</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">_demo_login</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">logout</span><span class="p-Indicator">:</span>
+</span><span class='line'>                <span class="l-Scalar-Plain">path</span><span class="p-Indicator">:</span>   <span class="l-Scalar-Plain">_demo_logout</span>
+</span><span class='line'>                <span class="l-Scalar-Plain">target</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">_demo</span>
+</span><span class='line'>            <span class="c1">#anonymous: ~</span>
+</span><span class='line'>            <span class="c1">#http_basic:</span>
+</span><span class='line'>            <span class="c1">#    realm: &quot;Secured Demo Area&quot;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="l-Scalar-Plain">oauth_authorize</span><span class="p-Indicator">:</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">pattern</span><span class="p-Indicator">:</span>    <span class="l-Scalar-Plain">^/oauth/v2/auth</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">form_login</span><span class="p-Indicator">:</span>
+</span><span class='line'>                <span class="l-Scalar-Plain">provider</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">user_provider</span>
+</span><span class='line'>                <span class="l-Scalar-Plain">check_path</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">_security_check</span>
+</span><span class='line'>                <span class="l-Scalar-Plain">login_path</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">_demo_login</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">anonymous</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">true</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="l-Scalar-Plain">api</span><span class="p-Indicator">:</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">pattern</span><span class="p-Indicator">:</span>    <span class="l-Scalar-Plain">^/api</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">fos_oauth</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">true</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">stateless</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">true</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="l-Scalar-Plain">access_control</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="c1"># You can omit this if /api can be accessed both authenticated and anonymously</span>
+</span><span class='line'>        <span class="p-Indicator">-</span> <span class="p-Indicator">{</span> <span class="nv">path</span><span class="p-Indicator">:</span> <span class="nv">^/api</span><span class="p-Indicator">,</span> <span class="nv">roles</span><span class="p-Indicator">:</span> <span class="p-Indicator">[</span> <span class="nv">IS_AUTHENTICATED_FULLY</span> <span class="p-Indicator">]</span> <span class="p-Indicator">}</span>
+</span><span class='line'>        <span class="p-Indicator">-</span> <span class="p-Indicator">{</span> <span class="nv">path</span><span class="p-Indicator">:</span> <span class="nv">^/demo/secured/hello/admin/</span><span class="p-Indicator">,</span> <span class="nv">roles</span><span class="p-Indicator">:</span> <span class="nv">ROLE_ADMIN</span> <span class="p-Indicator">}</span>
+</span><span class='line'>        <span class="c1">#- { path: ^/login, roles: IS_AUTHENTICATED_ANONYMOUSLY, requires_channel: https }</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>following goes to <strong>routing.yml</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="err">   </span><span class="c1"># app/config/routing.yml</span>
+</span><span class='line'><span class="err">    </span><span class="l-Scalar-Plain">fos_oauth_server_token</span><span class="p-Indicator">:</span>
+</span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">resource</span><span class="p-Indicator">:</span> <span class="s">&quot;@FOSOAuthServerBundle/Resources/config/routing/token.xml&quot;</span>
+</span><span class='line'><span class="err">    </span>
+</span><span class='line'><span class="err">    </span><span class="l-Scalar-Plain">fos_oauth_server_authorize</span><span class="p-Indicator">:</span>
+</span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">resource</span><span class="p-Indicator">:</span> <span class="s">&quot;@FOSOAuthServerBundle/Resources/config/routing/authorize.xml&quot;</span>
+</span><span class='line'><span class="err">    </span>
+</span><span class='line'><span class="err">    </span><span class="l-Scalar-Plain">acme_oauth_server_auth_login</span><span class="p-Indicator">:</span>
+</span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">pattern</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">/oauth/v2/auth_login</span>
+</span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">defaults</span><span class="p-Indicator">:</span> <span class="p-Indicator">{</span> <span class="nv">_controller</span><span class="p-Indicator">:</span> <span class="nv">AcmeDemoBundle</span><span class="p-Indicator">:</span><span class="nv">Security</span><span class="p-Indicator">:</span><span class="nv">login</span> <span class="p-Indicator">}</span>
+</span><span class='line'><span class="err">    </span>
+</span><span class='line'><span class="err">    </span><span class="l-Scalar-Plain">acme_oauth_server_auth_login_check</span><span class="p-Indicator">:</span>
+</span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">pattern</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">/oauth/v2/auth_login_check</span>
+</span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">defaults</span><span class="p-Indicator">:</span> <span class="p-Indicator">{</span> <span class="nv">_controller</span><span class="p-Indicator">:</span> <span class="nv">AcmeDemoBundle</span><span class="p-Indicator">:</span><span class="nv">Security</span><span class="p-Indicator">:</span><span class="nv">loginCheck</span> <span class="p-Indicator">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>and finally <strong>config.yml</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="c1"># app/config/config.yml</span>
+</span><span class='line'><span class="l-Scalar-Plain">fos_oauth_server</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">db_driver</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">orm</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">client_class</span><span class="p-Indicator">:</span>        <span class="l-Scalar-Plain">Acme\DemoBundle\Entity\Client</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">access_token_class</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">Acme\DemoBundle\Entity\AccessToken</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">refresh_token_class</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">Acme\DemoBundle\Entity\RefreshToken</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">auth_code_class</span><span class="p-Indicator">:</span>     <span class="l-Scalar-Plain">Acme\DemoBundle\Entity\AuthCode</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">service</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">user_provider</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">platform.user.provider</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">options</span><span class="p-Indicator">:</span>
+</span><span class='line'>            <span class="l-Scalar-Plain">supported_scopes</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">user</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, when all configurations done, time to update database structure</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>php app/console doctrine:schema:update --force
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Client Creation</h3>
+
+<p>first thing you need to do is give the platform ability to easily create clients for OAuth protected communication, and a protected API call.</p>
+
+<p>Create a command file</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'><span class="c1"># src/Acme/DemoBundle/Command/CreateClientCommand.php    </span>
+</span><span class='line'><span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Command</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Component\Console\Input\InputArgument</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Component\Console\Input\InputOption</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Component\Console\Input\InputInterface</span><span class="p">;</span>
+</span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Component\Console\Output\OutputInterface</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">CreateClientCommand</span> <span class="k">extends</span> <span class="nx">ContainerAwareCommand</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="k">protected</span> <span class="k">function</span> <span class="nf">configure</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nv">$this</span>
+</span><span class='line'>            <span class="o">-&gt;</span><span class="na">setName</span><span class="p">(</span><span class="s1">&#39;acme:oauth-server:client:create&#39;</span><span class="p">)</span>
+</span><span class='line'>            <span class="o">-&gt;</span><span class="na">setDescription</span><span class="p">(</span><span class="s1">&#39;Creates a new client&#39;</span><span class="p">)</span>
+</span><span class='line'>            <span class="o">-&gt;</span><span class="na">addOption</span><span class="p">(</span>
+</span><span class='line'>                <span class="s1">&#39;redirect-uri&#39;</span><span class="p">,</span>
+</span><span class='line'>                <span class="k">null</span><span class="p">,</span>
+</span><span class='line'>                <span class="nx">InputOption</span><span class="o">::</span><span class="na">VALUE_REQUIRED</span> <span class="o">|</span> <span class="nx">InputOption</span><span class="o">::</span><span class="na">VALUE_IS_ARRAY</span><span class="p">,</span>
+</span><span class='line'>                <span class="s1">&#39;Sets redirect uri for client. Use this option multiple times to set multiple redirect URIs.&#39;</span><span class="p">,</span>
+</span><span class='line'>                <span class="k">null</span>
+</span><span class='line'>            <span class="p">)</span>
+</span><span class='line'>            <span class="o">-&gt;</span><span class="na">addOption</span><span class="p">(</span>
+</span><span class='line'>                <span class="s1">&#39;grant-type&#39;</span><span class="p">,</span>
+</span><span class='line'>                <span class="k">null</span><span class="p">,</span>
+</span><span class='line'>                <span class="nx">InputOption</span><span class="o">::</span><span class="na">VALUE_REQUIRED</span> <span class="o">|</span> <span class="nx">InputOption</span><span class="o">::</span><span class="na">VALUE_IS_ARRAY</span><span class="p">,</span>
+</span><span class='line'>                <span class="s1">&#39;Sets allowed grant type for client. Use this option multiple times to set multiple grant types..&#39;</span><span class="p">,</span>
+</span><span class='line'>                <span class="k">null</span>
+</span><span class='line'>            <span class="p">)</span>
+</span><span class='line'>            <span class="o">-&gt;</span><span class="na">setHelp</span><span class="p">(</span>
+</span><span class='line'>                <span class="s">&lt;&lt;&lt;EOT</span>
+</span><span class='line'><span class="s">                    The &lt;info&gt;%command.name%&lt;/info&gt;command creates a new client.</span>
+</span><span class='line'>
+</span><span class='line'><span class="s">&lt;info&gt;php %command.full_name% [--redirect-uri=...] [--grant-type=...] name&lt;/info&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="s">EOT</span>
+</span><span class='line'>            <span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">protected</span> <span class="k">function</span> <span class="nf">execute</span><span class="p">(</span><span class="nx">InputInterface</span> <span class="nv">$input</span><span class="p">,</span> <span class="nx">OutputInterface</span> <span class="nv">$output</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nv">$clientManager</span> <span class="o">=</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">getContainer</span><span class="p">()</span><span class="o">-&gt;</span><span class="na">get</span><span class="p">(</span><span class="s1">&#39;fos_oauth_server.client_manager.default&#39;</span><span class="p">);</span>
+</span><span class='line'>        <span class="nv">$client</span> <span class="o">=</span> <span class="nv">$clientManager</span><span class="o">-&gt;</span><span class="na">createClient</span><span class="p">();</span>
+</span><span class='line'>        <span class="nv">$client</span><span class="o">-&gt;</span><span class="na">setRedirectUris</span><span class="p">(</span><span class="nv">$input</span><span class="o">-&gt;</span><span class="na">getOption</span><span class="p">(</span><span class="s1">&#39;redirect-uri&#39;</span><span class="p">));</span>
+</span><span class='line'>        <span class="nv">$client</span><span class="o">-&gt;</span><span class="na">setAllowedGrantTypes</span><span class="p">(</span><span class="nv">$input</span><span class="o">-&gt;</span><span class="na">getOption</span><span class="p">(</span><span class="s1">&#39;grant-type&#39;</span><span class="p">));</span>
+</span><span class='line'>        <span class="nv">$clientManager</span><span class="o">-&gt;</span><span class="na">updateClient</span><span class="p">(</span><span class="nv">$client</span><span class="p">);</span>
+</span><span class='line'>        <span class="nv">$output</span><span class="o">-&gt;</span><span class="na">writeln</span><span class="p">(</span>
+</span><span class='line'>            <span class="nb">sprintf</span><span class="p">(</span>
+</span><span class='line'>                <span class="s1">&#39;Added a new client with public id &lt;info&gt;%s&lt;/info&gt;, secret &lt;info&gt;%s&lt;/info&gt;&#39;</span><span class="p">,</span>
+</span><span class='line'>                <span class="nv">$client</span><span class="o">-&gt;</span><span class="na">getPublicId</span><span class="p">(),</span>
+</span><span class='line'>                <span class="nv">$client</span><span class="o">-&gt;</span><span class="na">getSecret</span><span class="p">()</span>
+</span><span class='line'>            <span class="p">)</span>
+</span><span class='line'>        <span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In order to test it, please execute</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'> php app/console acme:oauth-server:client:create --redirect-uri<span class="o">=</span><span class="s2">&quot;http://clinet.local/&quot;</span> --grant-type<span class="o">=</span><span class="s2">&quot;authorization_code&quot;</span> --grant-type<span class="o">=</span><span class="s2">&quot;password&quot;</span> --grant-type<span class="o">=</span><span class="s2">&quot;refresh_token&quot;</span> --grant-type<span class="o">=</span><span class="s2">&quot;token&quot;</span> --grant-type<span class="o">=</span><span class="s2">&quot;client_credentials&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>this will register an OAuth client on the platform side, and will Output something like this (of course, you will see slightly different output)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>Added a new client with public id 5_ebg354gknv48kc88o8oogwokckco0o40sc000cowc8soosw0k, secret 5ub5upfxih0k8g44w00ogwc4swog4088o8444sssos8k888o8g
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Keep those public_id and secret somewhere private, since that&rsquo;s the credentials for the client application to access your backend using oauth.</p>
+
+<h3>Check if it works</h3>
+
+<p>Execute the following request in your browser</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>http://portal.local/app_dev.php/oauth/v2/token?client_id<span class="o">=</span>5_ebg354gknv48kc88o8oogwokckco0o40sc000cowc8soosw0k&amp;client_secret<span class="o">=</span>5ub5upfxih0k8g44w00ogwc4swog4088o8444sssos8k888o8g&amp;grant_type<span class="o">=</span>client_credentials
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you see response like this one, then we did everything correctly, otherwise, leave a comment, or contact me over twitter, let&rsquo;s figure this out together ;)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='json'><span class='line'><span class="p">{</span><span class="nt">&quot;access_token&quot;</span><span class="p">:</span><span class="s2">&quot;YTk0YTVjZDY0YWI2ZmE0NjRiODQ4OWIyNjZkNjZlMTdiZGZlNmI3MDNjZGQwYTZkMDNiMjliNDg3NWYwZWI0MQ&quot;</span><span class="p">,</span><span class="nt">&quot;expires_in&quot;</span><span class="p">:</span><span class="mi">3600</span><span class="p">,</span><span class="nt">&quot;token_type&quot;</span><span class="p">:</span><span class="s2">&quot;bearer&quot;</span><span class="p">,</span><span class="nt">&quot;scope&quot;</span><span class="p">:</span><span class="s2">&quot;user&quot;</span><span class="p">,</span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="s2">&quot;ZDU1MDY1OTc4NGNlNzQ5NWFiYTEzZTE1OGY5MWNjMmViYTBiNmRjOTNlY2ExNzAxNWRmZTM1NjI3ZDkwNDdjNQ&quot;</span><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[OAuth2 Explained: Part 1 - Principles and Terminology]]></title>
+    <link href="http://iamtankist.github.io/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/"/>
+    <updated>2013-07-16T15:35:00+02:00</updated>
+    <id>http://iamtankist.github.io/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology</id>
+    <content type="html"><![CDATA[<ul>
+<li><a href="http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/">Part 1 &ndash; Principles and Terminology</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
+<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+</ul>
+
+
+<h2>Why OAuth and a bit of Terminology</h2>
+
+<p>Before we dive in into technical aspects of OAuth, let&rsquo;s get the OAuth terminology straight.</p>
+
+<h3>Provider</h3>
+
+<p>So you have a functional platform, gathered some data and functionality and now it&rsquo;s time when you need to provide this data and functionality over an API to your users, mobile devices and other platforms. You will be an OAuth <strong>Provider</strong>, rather soon.</p>
+
+<!-- more -->
+
+
+<h3>Access Token</h3>
+
+<p>Let&rsquo;s say you have an API to protect. You need to provide some functionality over it, including passing back and forth sensible data.</p>
+
+<p>Let&rsquo;s assume, a user is able to log in using mobile application and request his current balance on his account. Simplest thing comes to your mind:</p>
+
+<blockquote><p>/user/15/balance</p></blockquote>
+
+<p>where 15 is user&rsquo;s id? Bad idea. Everyone who is able to use any kind of development console for the browser can change user id and get access to a sensible data. How can you solve this?</p>
+
+<p>Right. The same way PHP Sessions work for example. You generate a token, something similar to PHPSESSID, you create it at the moment when user logs in, pass this token back and forth with each request, and that&rsquo;s how the server knows that this is the user associated with current session. There is no way one can manipulate session token in order to get data for specific user. And then when the user logs out you remove the token, or it just gets expired after awhile.</p>
+
+<p>Congratulations, you just invented the main entity of OAuth &ndash; <strong>Access Token</strong>.</p>
+
+<p>In OAuth world obtaining Access Token means getting access to the application. Once you get it, you attach the access token to each of your requests, and Provider can uniquely identify who you are and what actions are you allowed to perform. Obtained Access Token? Game over, You Won!</p>
+
+<h3>Clients and Scopes</h3>
+
+<p>What if, we need a special kind of service which is able to set user balance, and that&rsquo;s for each and one of them. One solution (and your operations team will really like it) you just give it another endpoint, and this endpoint is open only for white-listed IPs. If you googled for this article, most probably you already know at least 5 reasons why this solution stinks.</p>
+
+<p>A better solution would be: You are able, somehow, on the backend side, distinguish between different type of consumers for your applications. Some are more privileged, some are less. Some are allowed to request only their own balance, some clients are allowed to manipulate this balances for all possible users. So we need a mechanism to specify different <strong>Clients</strong>  and give them different privileges or in OAuth terminology &ndash; <strong>Scopes</strong>. You most probably don&rsquo;t need a Client for each User, you are fine with one Client for all Users, one Client for a MobileApp, one Client for an accounting application. Each client gets a pair of credentials. <strong>Client ID</strong> and <strong>Client Secret</strong>. You need those in order to identify your client.</p>
+
+<h3>Grant Types</h3>
+
+<p>If you ever used Facebook Login for websites, you know how the most popular Grant Type works. You get redirected to Provider&rsquo;s website, if you are not yet logged in, the Provider offers you a login, then it asks for certain permissions, what can the Client do on your behalf, and then redirects you back. That&rsquo;s the <strong>Authoritation_Code</strong> grant.</p>
+
+<p>But then we have our accounting application. There&rsquo;s no login associated with it, no web interface, it&rsquo;s just a dumb-as-hell cronjob which just wants to trigger some HTTP requests to update user balances on your side. Then we use <strong>Client_Credentials</strong> grant type. It means in order to obtain access to the api, a client should only present his Client Id and Client Password.</p>
+
+<p>Or an intermediate grant type &ndash; password. You provide a client id, client secret, username, password, and the Provider issues an access token, which is connected to this user, so when you get a request, you can identify which user made it.</p>
+
+<p>So the <strong>Grant Type</strong> represents the flow needed for the <strong>Client</strong> to obtain <strong>Access Token</strong>.</p>
+
+<p>In OAuth2 there are five Grant Types that are defined by the standard, but you have an ability to implement a custom one for your needs.</p>
+
+<p>For example you need to identify user not by username/password, but you give them API keys, in order not to transmit password in clear text over API. Then you need to implement a grant type for that flow. How to do that in details will be described in the 5th part of this tutorial.</p>
+]]></content>
+  </entry>
+  
+</feed>
