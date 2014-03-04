@@ -4,7 +4,7 @@
   <title><![CDATA[Category: OAuth | Yet Another Tecnical Blog]]></title>
   <link href="http://iamtankist.github.io/blog/categories/oauth/atom.xml" rel="self"/>
   <link href="http://iamtankist.github.io/"/>
-  <updated>2014-03-04T17:59:45+01:00</updated>
+  <updated>2014-03-04T18:01:20+01:00</updated>
   <id>http://iamtankist.github.io/</id>
   <author>
     <name><![CDATA[Armen Mkrtchyan]]></name>
@@ -36,6 +36,9 @@
 <p>For this implementation I had two options. To use <a href="https://github.com/adoy/PHP-OAuth2">lightweight OAuth2 client library</a> or to implement Guzzle Plugin. I have chosen the first approach, since it covers several grants at once, when Guzzle plugin will solve the more specific problem, and might be a better solution in your specific case.</p>
 
 <p>In this article I will focus on authorization_code and client_credentials grant types.</p>
+
+<!-- more -->
+
 
 <h2>Setup</h2>
 
