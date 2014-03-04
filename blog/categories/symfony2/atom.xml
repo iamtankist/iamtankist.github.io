@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Symfony2 | Yet Another Tecnical Blog]]></title>
   <link href="http://iamtankist.github.io/blog/categories/symfony2/atom.xml" rel="self"/>
   <link href="http://iamtankist.github.io/"/>
-  <updated>2014-03-04T17:44:29+01:00</updated>
+  <updated>2014-03-04T17:59:45+01:00</updated>
   <id>http://iamtankist.github.io/</id>
   <author>
     <name><![CDATA[Armen Mkrtchyan]]></name>
@@ -12,6 +12,261 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[OAuth2 Explained: Part 5 - Implementing OAuth2 Client with Symfony2]]></title>
+    <link href="http://iamtankist.github.io/blog/2014/03/04/oauth2-explained-part-5-implementing-oauth2-client-with-symfony2/"/>
+    <updated>2014-03-04T18:45:00+01:00</updated>
+    <id>http://iamtankist.github.io/blog/2014/03/04/oauth2-explained-part-5-implementing-oauth2-client-with-symfony2</id>
+    <content type="html"><![CDATA[<ul>
+<li><a href="http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/">Part 1 &ndash; Principles and Terminology</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
+<li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
+<li><a href="http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing.oauth2-client-with-symfony2/">Part 5 &ndash; Implementing OAuth2 Client with Symfony2</a></li>
+</ul>
+
+
+<h2>Intro</h2>
+
+<p>In this article I would like to describe implementation of an OAuth2 Client. Please keep in mind that this is not an authentification provider. To authenticate against third party services there are <a href="https://github.com/hwi/HWIOAuthBundle">well maintained bundles</a> that do just that. My target is to provide a solution to consume the API from the <a href="https://github.com/iamtankist/oauth-server">OAuth2 Server</a> we provided in the previous articles.</p>
+
+<h2>Overview</h2>
+
+<p>For this implementation I had two options. To use <a href="https://github.com/adoy/PHP-OAuth2">lightweight OAuth2 client library</a> or to implement Guzzle Plugin. I have chosen the first approach, since it covers several grants at once, when Guzzle plugin will solve the more specific problem, and might be a better solution in your specific case.</p>
+
+<p>In this article I will focus on authorization_code and client_credentials grant types.</p>
+
+<h2>Setup</h2>
+
+<p>Let&rsquo;s start by requiring the library from the project root directory
+<code>bash
+composer require adoy/oauth2:dev-master
+</code>
+This is shorthand for adding the <code>adoy/oauth2:dev-master</code> to your <code>composer.json</code> file and executing <code>composer install</code> afterwards.</p>
+
+<p>In case you don&rsquo;t have a client on the server side, please create one. Execute
+<code>bash
+php app/console stark:oauth-server:client:create --redirect-uri="http://oauth-client.local/authorize" --grant-type="authorization_code" --grant-type="password" --grant-type="refresh-token" --grant-type="token" --grant-type="client_credentials"
+</code>
+redirect-uri specifies where will the server redirect, to provide the code from authorization_code grant. As OAuth2 consumer we will need to provide an endpoint for that, and the url for that endpoint is specified here. I will cover how to do that later in this article, all you need to know for now is the url for this endpoint.</p>
+
+<p>As a result of execution you will have client_id and client_secret. We will need this right away. Specify the following parameters in parameters.yml.dist
+```yaml</p>
+
+<h1>app/config/parameters.yml.dist</h1>
+
+<p>parameters:</p>
+
+<pre><code># ...
+oauth2_client_id:       3_24slxofityxw0w4o8gsg4ssg0kow4wc8gwccg8ccosg4w0wwgc
+oauth2_client_secret:   2wxfg6tpcuwws8444ksgck8804sg88wowc80s8ww8owc00ckcg
+oauth2_redirect_url:    http://oauth-client.local/authorize
+oauth2_auth_endpoint:   http://oauth-server.local/oauth/v2/auth
+oauth2_token_endpoint:  http://oauth-server.local/oauth/v2/token
+</code></pre>
+
+<p><code>``
+Now you just need to execute</code>composer install<code>and it will apply the parameters into</code>parameters.yml`.</p>
+
+<p>Since we don&rsquo;t have a bundle for Symfony2 for this library at the moment of writing, we will build a facade for it for our specific needs and register the facade with Symfony2 Dependency Injection Container.</p>
+
+<h2>The Facade</h2>
+
+<p>```php
+&lt;?php
+// src/StarkIndustries/ClientBundle/Service/OAuth2Client.php
+namespace StarkIndustries\ClientBundle\Service;</p>
+
+<p>use OAuth2;</p>
+
+<p>class OAuth2Client
+{</p>
+
+<pre><code>protected $client;
+protected $authEndpoint;
+protected $tokenEndpoint;
+protected $redirectUrl;
+protected $grant;
+protected $params;
+
+public function __construct(OAuth2\Client $client, $authEndpoint, $tokenEndpoint, $redirectUrl, $grant, $params)
+{
+    $this-&gt;client = $client;
+    $this-&gt;authEndpoint = $authEndpoint;
+    $this-&gt;tokenEndpoint = $tokenEndpoint;
+    $this-&gt;redirectUrl = $redirectUrl;
+    $this-&gt;grant = $grant;
+    $this-&gt;params = $params;
+}
+
+public function getAuthenticationUrl() {
+    return $this-&gt;client-&gt;getAuthenticationUrl($this-&gt;authEndpoint, $this-&gt;redirectUrl);
+}
+
+public function getAccessToken($code = null)
+{
+    if ($code !== null) {
+        $this-&gt;params['code'] = $code;
+    }
+
+    $response = $this-&gt;client-&gt;getAccessToken($this-&gt;tokenEndpoint, $this-&gt;grant, $this-&gt;params);
+    if(isset($response['result']) &amp;&amp; isset($response['result']['access_token'])) {
+        $accessToken = $response['result']['access_token'];
+        $this-&gt;client-&gt;setAccessToken($accessToken);
+        return $accessToken;
+    }
+
+    throw new OAuth2\Exception(sprintf('Unable to obtain Access Token. Response from the Server: %s ', var_export($response)));
+}
+
+public function fetch($url)
+{
+    return $this-&gt;client-&gt;fetch($url);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Now let&rsquo;s register this with DIC.
+```xml
+&lt;?xml version=&ldquo;1.0&rdquo; ?></p>
+
+<!-- src/StarkIndustries/ClientBundle/Resources/config/services.xml-->
+
+
+<p>&lt;container xmlns=&ldquo;<a href="http://symfony.com/schema/dic/services">http://symfony.com/schema/dic/services</a>&rdquo;</p>
+
+<pre><code>xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd"&gt;
+
+&lt;parameters&gt;
+    &lt;parameter key="adoy_oauth2.client.class"&gt;OAuth2\Client&lt;/parameter&gt;
+    &lt;parameter key="stark_industries_client.client.class"&gt;StarkIndustries\ClientBundle\Service\OAuth2Client&lt;/parameter&gt;
+&lt;/parameters&gt;
+
+&lt;services&gt;
+    &lt;service id="adoy_oauth2.client" class="%adoy_oauth2.client.class%"&gt;
+        &lt;argument&gt;%oauth2_client_id%&lt;/argument&gt;
+        &lt;argument&gt;%oauth2_client_secret%&lt;/argument&gt;
+    &lt;/service&gt;
+
+    &lt;service id="stark_industries_client.credentials_client" class="%stark_industries_client.client.class%"&gt;
+        &lt;argument type="service" id="adoy_oauth2.client" /&gt;
+        &lt;argument&gt;%oauth2_auth_endpoint%&lt;/argument&gt;
+        &lt;argument&gt;%oauth2_token_endpoint%&lt;/argument&gt;
+        &lt;argument&gt;%oauth2_redirect_url%&lt;/argument&gt;
+        &lt;argument&gt;client_credentials&lt;/argument&gt;
+        &lt;argument type="collection"&gt;
+            &lt;argument key="client_id"&gt;%oauth2_client_id%&lt;/argument&gt;
+            &lt;argument key="client_secret"&gt;%oauth2_client_secret%&lt;/argument&gt;
+        &lt;/argument&gt;
+    &lt;/service&gt;
+
+    &lt;service id="stark_industries_client.authorize_client" class="%stark_industries_client.client.class%"&gt;
+        &lt;argument type="service" id="adoy_oauth2.client" /&gt;
+        &lt;argument&gt;%oauth2_auth_endpoint%&lt;/argument&gt;
+        &lt;argument&gt;%oauth2_token_endpoint%&lt;/argument&gt;
+        &lt;argument&gt;%oauth2_redirect_url%&lt;/argument&gt;
+        &lt;argument&gt;authorization_code&lt;/argument&gt;
+        &lt;argument type="collection"&gt;
+            &lt;argument key="redirect_uri"&gt;%oauth2_redirect_url%&lt;/argument&gt;
+        &lt;/argument&gt;
+    &lt;/service&gt;
+&lt;/services&gt;
+</code></pre>
+
+<p></container>
+```
+As you can see, we have done the following. Registered the library class itself in the DIC, then we have created two clients with different configurations and parameter sets, for client_credentials and authorization code accordingly. Let&rsquo;s see how one can use them in the code. We will create a console command for client credentials, and controller for authorization code (since it has to provide a uri we mentioned earlier to be redirected to).</p>
+
+<h2>Client Credentials Command</h2>
+
+<p>I tried to keep this pretty much self explanatory</p>
+
+<p>```php
+&lt;?php
+// src/StarkIndustries/ClientBundle/Command/CredentialsCommand.php
+namespace StarkIndustries\ClientBundle\Command;</p>
+
+<p>use OAuth2;
+use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;</p>
+
+<p>class CredentialsCommand extends ContainerAwareCommand
+{</p>
+
+<pre><code>protected function configure()
+{
+    $this
+        -&gt;setName('oauth2:credentials')
+        -&gt;setDescription('Executes OAuth2 Credentials grant');
+}
+
+protected function execute(InputInterface $input, OutputInterface $output)
+{
+    $credentialsClient = $this-&gt;getContainer()-&gt;get('stark_industries_client.credentials_client');
+    $accessToken = $credentialsClient-&gt;getAccessToken();
+    $output-&gt;writeln(sprintf('Obtained Access Token: &lt;info&gt;%s&lt;/info&gt;', $accessToken));
+
+    $url = 'http://oauth-server.local/api/articles';
+    $output-&gt;writeln(sprintf('Requesting: &lt;info&gt;%s&lt;/info&gt;', $url));
+    $response = $credentialsClient-&gt;fetch($url);
+    $output-&gt;writeln(sprintf('Response: &lt;info&gt;%s&lt;/info&gt;', var_export($response, true)));
+}
+</code></pre>
+
+<p>}
+<code>``
+After obtaining access token you can use other HTTP libraries to make the request, Guzzle for instance, just don't forget to append</code>access_token` GET parameter or transmit a Bearer header, or use one of OAuth2 supported methods to transport the token. Or use the fetch method from the library, as it is done in the example.</p>
+
+<h2>Authorization Code Controller</h2>
+
+<p>This one is a bit more complicated. You can split this into two pieces. One that makes the call, other that handles redirect, but for simplicity I combined all into one controller.</p>
+
+<p>```php
+&lt;?php
+// src/StarkIndustries/ClientBundle/Controller/AuthController.php
+namespace StarkIndustries\ClientBundle\Controller;</p>
+
+<p>use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;</p>
+
+<p>// these import the &ldquo;@Route&rdquo; and &ldquo;@Template&rdquo; annotations
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;</p>
+
+<p>use OAuth2;</p>
+
+<p>class AuthController extends Controller
+{</p>
+
+<pre><code>/**
+ * @Route("/authorize", name="auth")
+ */
+public function authAction(Request $request)
+{
+    $authorizeClient = $this-&gt;container-&gt;get('stark_industries_client.authorize_client');
+
+    if (!$request-&gt;query-&gt;get('code')) {
+        return new RedirectResponse($authorizeClient-&gt;getAuthenticationUrl());
+    }
+
+    $authorizeClient-&gt;getAccessToken($request-&gt;query-&gt;get('code'));
+
+    return new Response($authorizeClient-&gt;fetch('http://oauth-server.local/api/articles'));
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>That&rsquo;s basically everything what you need to consume an OAuth2 API. In case you need a working example, please refer to a <a href="https://github.com/iamtankist/oauth-client">reference implementation</a>.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[OAuth2 Explained: Part 4 - Implementing Custom Grant Type with Symfony2 and FOSOAuthServerBundle]]></title>
