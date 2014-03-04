@@ -4,7 +4,7 @@
   <title><![CDATA[Category: OAuth | Yet Another Tecnical Blog]]></title>
   <link href="http://iamtankist.github.io/blog/categories/oauth/atom.xml" rel="self"/>
   <link href="http://iamtankist.github.io/"/>
-  <updated>2014-01-21T14:19:15+01:00</updated>
+  <updated>2014-03-04T17:43:10+01:00</updated>
   <id>http://iamtankist.github.io/</id>
   <author>
     <name><![CDATA[Armen Mkrtchyan]]></name>
@@ -15,15 +15,15 @@
   
   <entry>
     <title type="html"><![CDATA[OAuth2 Explained: Part 4 - Implementing Custom Grant Type with Symfony2 and FOSOAuthServerBundle]]></title>
-    <link href="http://iamtankist.github.io/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/"/>
+    <link href="http://iamtankist.github.io/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle+copy/"/>
     <updated>2013-08-20T14:05:00+02:00</updated>
-    <id>http://iamtankist.github.io/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle</id>
+    <id>http://iamtankist.github.io/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle copy</id>
     <content type="html"><![CDATA[<ul>
 <li><a href="http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/">Part 1 &ndash; Principles and Terminology</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
-<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+<li><a href="http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing.oauth2-client-with-symfony2/">Part 5 &ndash; Implementing OAuth2 Client with Symfony2</a></li>
 </ul>
 
 
@@ -42,7 +42,7 @@
 
 <p>``` php</p>
 
-<pre><code>&lt;?php 
+<pre><code>&lt;?php
 
 namespace Acme/DemoBundle/Entity;
 
@@ -181,7 +181,7 @@ class ApiKeyGrantExtension implements GrantExtensionInterface
 
 <p>First you need to create a client which grants this custom grant extension</p>
 
-<pre><code>php app/console acme:oauth-server:client:create --grant-type="http://platform.local/grants/api_key" 
+<pre><code>php app/console acme:oauth-server:client:create --grant-type="http://platform.local/grants/api_key"
 </code></pre>
 
 <p>Expected output looks like this</p>
@@ -220,7 +220,7 @@ class ApiKeyGrantExtension implements GrantExtensionInterface
 <li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
-<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+<li><a href="http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing.oauth2-client-with-symfony2/">Part 5 &ndash; Implementing OAuth2 Client with Symfony2</a></li>
 </ul>
 
 
@@ -430,7 +430,7 @@ To keep URLs short and readable I&rsquo;ll refer to those as CLIENT_ID and CLIEN
 <li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
-<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+<li><a href="http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing.oauth2-client-with-symfony2/">Part 5 &ndash; Implementing OAuth2 Client with Symfony2</a></li>
 </ul>
 
 
@@ -715,7 +715,7 @@ public function registerBundles()
         // ...
         new FOS\OAuthServerBundle\FOSOAuthServerBundle(),
     );
-} 
+}
 </code></pre>
 
 <p>```
@@ -1077,7 +1077,7 @@ fos_oauth_server:
 ``` php</p>
 
 <pre><code>&lt;?php
-# src/Acme/DemoBundle/Command/CreateClientCommand.php   
+# src/Acme/DemoBundle/Command/CreateClientCommand.php
 namespace Acme\DemoBundle\Command;
 
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
@@ -1182,7 +1182,7 @@ If you see response like this one, then we did everything correctly, otherwise, 
 <li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
-<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+<li><a href="http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing-oauth2-client-with-symfony2/">Part 5 &ndash; Implementing OAuth2 Client with Symfony2</a></li>
 </ul>
 
 

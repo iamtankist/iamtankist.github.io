@@ -110,7 +110,7 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 <li><a href="http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/">Part 2 &ndash; Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/">Part 3 &ndash; Using OAuth2 with your bare hands</a></li>
 <li><a href="http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">Part 4 &ndash; Implementing Custom Grant Type</a></li>
-<li>Part 5 &ndash; Implementing OAuth2 Client with Symfony2</li>
+<li><a href="http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing.oauth2-client-with-symfony2/">Part 5 &ndash; Implementing OAuth2 Client with Symfony2</a></li>
 </ul>
 
 
@@ -263,14 +263,14 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 <span class='line-number'>138</span>
 <span class='line-number'>139</span>
 </pre></td><td class='code'><pre><code class='php'><span class='line'>  <span class="o">&lt;?</span><span class="nx">php</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>  <span class="c1">// src/Acme/DemoBundle/Entity/User.php</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>  <span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Entity</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>  <span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\User\UserInterface</span><span class="p">;</span>
 </span><span class='line'>  <span class="k">use</span> <span class="nx">Doctrine\ORM\Mapping</span> <span class="k">as</span> <span class="nx">ORM</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>  <span class="sd">/**</span>
 </span><span class='line'><span class="sd">  * Acme\UserBundle\Entity\User</span>
 </span><span class='line'><span class="sd">  *</span>
@@ -285,42 +285,42 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'><span class="sd">      * @ORM\GeneratedValue(strategy=&quot;AUTO&quot;)</span>
 </span><span class='line'><span class="sd">      */</span>
 </span><span class='line'>      <span class="k">private</span> <span class="nv">$id</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @ORM\Column(type=&quot;string&quot;, length=25, unique=true)</span>
 </span><span class='line'><span class="sd">      */</span>
 </span><span class='line'>      <span class="k">private</span> <span class="nv">$username</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @ORM\Column(type=&quot;string&quot;, length=25, unique=true)</span>
 </span><span class='line'><span class="sd">      */</span>
 </span><span class='line'>      <span class="k">private</span> <span class="nv">$email</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @ORM\Column(type=&quot;string&quot;, length=32)</span>
 </span><span class='line'><span class="sd">      */</span>
 </span><span class='line'>      <span class="k">private</span> <span class="nv">$salt</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @ORM\Column(type=&quot;string&quot;, length=40)</span>
 </span><span class='line'><span class="sd">      */</span>
 </span><span class='line'>      <span class="k">private</span> <span class="nv">$password</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @ORM\Column(name=&quot;is_active&quot;, type=&quot;boolean&quot;)</span>
 </span><span class='line'><span class="sd">      */</span>
 </span><span class='line'>      <span class="k">private</span> <span class="nv">$isActive</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">__construct</span><span class="p">()</span>
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">isActive</span> <span class="o">=</span> <span class="k">true</span><span class="p">;</span>
 </span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">salt</span> <span class="o">=</span> <span class="nb">md5</span><span class="p">(</span><span class="nb">uniqid</span><span class="p">(</span><span class="k">null</span><span class="p">,</span> <span class="k">true</span><span class="p">));</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">getId</span><span class="p">(){</span>
 </span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">id</span><span class="p">;</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @inheritDoc</span>
 </span><span class='line'><span class="sd">      */</span>
@@ -328,7 +328,7 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">username</span><span class="p">;</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @inheritDoc</span>
 </span><span class='line'><span class="sd">      */</span>
@@ -337,7 +337,7 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">username</span> <span class="o">=</span> <span class="nv">$username</span><span class="p">;</span>
 </span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">email</span> <span class="o">=</span> <span class="nv">$username</span><span class="p">;</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @inheritDoc</span>
 </span><span class='line'><span class="sd">      */</span>
@@ -345,12 +345,12 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">salt</span><span class="p">;</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">setSalt</span><span class="p">(</span><span class="nv">$salt</span><span class="p">)</span>
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">salt</span> <span class="o">=</span> <span class="nv">$salt</span><span class="p">;</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @inheritDoc</span>
 </span><span class='line'><span class="sd">      */</span>
@@ -358,12 +358,12 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">password</span><span class="p">;</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">setPassword</span><span class="p">(</span><span class="nv">$password</span><span class="p">)</span>
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">password</span> <span class="o">=</span> <span class="nv">$password</span><span class="p">;</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @inheritDoc</span>
 </span><span class='line'><span class="sd">      */</span>
@@ -371,14 +371,14 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>          <span class="k">return</span> <span class="k">array</span><span class="p">(</span><span class="s1">&#39;ROLE_USER&#39;</span><span class="p">);</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @inheritDoc</span>
 </span><span class='line'><span class="sd">      */</span>
 </span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">eraseCredentials</span><span class="p">()</span>
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @see \Serializable::serialize()</span>
 </span><span class='line'><span class="sd">      */</span>
@@ -390,7 +390,7 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'>              <span class="p">)</span>
 </span><span class='line'>          <span class="p">);</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="sd">/**</span>
 </span><span class='line'><span class="sd">      * @see \Serializable::unserialize()</span>
 </span><span class='line'><span class="sd">      */</span>
@@ -473,22 +473,22 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'>  <span class="c1">// src/Acme/DemoBundle/Provider/UserProvider.php</span>
 </span><span class='line'>
 </span><span class='line'>  <span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Provider</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>  <span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\User\UserInterface</span><span class="p">;</span>
 </span><span class='line'>  <span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\User\UserProviderInterface</span><span class="p">;</span>
 </span><span class='line'>  <span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\Exception\UsernameNotFoundException</span><span class="p">;</span>
 </span><span class='line'>  <span class="k">use</span> <span class="nx">Symfony\Component\Security\Core\Exception\UnsupportedUserException</span><span class="p">;</span>
 </span><span class='line'>  <span class="k">use</span> <span class="nx">Doctrine\Common\Persistence\ObjectRepository</span><span class="p">;</span>
 </span><span class='line'>  <span class="k">use</span> <span class="nx">Doctrine\ORM\NoResultException</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>  <span class="k">class</span> <span class="nc">UserProvider</span> <span class="k">implements</span> <span class="nx">UserProviderInterface</span>
 </span><span class='line'>  <span class="p">{</span>
 </span><span class='line'>      <span class="k">protected</span> <span class="nv">$userRepository</span><span class="p">;</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">__construct</span><span class="p">(</span><span class="nx">ObjectRepository</span> <span class="nv">$userRepository</span><span class="p">){</span>
 </span><span class='line'>          <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span> <span class="o">=</span> <span class="nv">$userRepository</span><span class="p">;</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">loadUserByUsername</span><span class="p">(</span><span class="nv">$username</span><span class="p">)</span>
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>          <span class="nv">$q</span> <span class="o">=</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span>
@@ -497,7 +497,7 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'>              <span class="o">-&gt;</span><span class="na">setParameter</span><span class="p">(</span><span class="s1">&#39;username&#39;</span><span class="p">,</span> <span class="nv">$username</span><span class="p">)</span>
 </span><span class='line'>              <span class="o">-&gt;</span><span class="na">setParameter</span><span class="p">(</span><span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="nv">$username</span><span class="p">)</span>
 </span><span class='line'>              <span class="o">-&gt;</span><span class="na">getQuery</span><span class="p">();</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>          <span class="k">try</span> <span class="p">{</span>
 </span><span class='line'>              <span class="nv">$user</span> <span class="o">=</span> <span class="nv">$q</span><span class="o">-&gt;</span><span class="na">getSingleResult</span><span class="p">();</span>
 </span><span class='line'>          <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">NoResultException</span> <span class="nv">$e</span><span class="p">)</span> <span class="p">{</span>
@@ -507,10 +507,10 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'>              <span class="p">);</span>
 </span><span class='line'>              <span class="k">throw</span> <span class="k">new</span> <span class="nx">UsernameNotFoundException</span><span class="p">(</span><span class="nv">$message</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nv">$e</span><span class="p">);</span>
 </span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>          <span class="k">return</span> <span class="nv">$user</span><span class="p">;</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">refreshUser</span><span class="p">(</span><span class="nx">UserInterface</span> <span class="nv">$user</span><span class="p">)</span>
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>          <span class="nv">$class</span> <span class="o">=</span> <span class="nb">get_class</span><span class="p">(</span><span class="nv">$user</span><span class="p">);</span>
@@ -522,10 +522,10 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span><span class='line'>                  <span class="p">)</span>
 </span><span class='line'>              <span class="p">);</span>
 </span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span><span class="o">-&gt;</span><span class="na">find</span><span class="p">(</span><span class="nv">$user</span><span class="o">-&gt;</span><span class="na">getId</span><span class="p">());</span>
 </span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  
+</span><span class='line'>
 </span><span class='line'>      <span class="k">public</span> <span class="k">function</span> <span class="nf">supportsClass</span><span class="p">(</span><span class="nv">$class</span><span class="p">)</span>
 </span><span class='line'>      <span class="p">{</span>
 </span><span class='line'>          <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">userRepository</span><span class="o">-&gt;</span><span class="na">getClassName</span><span class="p">()</span> <span class="o">===</span> <span class="nv">$class</span>
@@ -1157,8 +1157,6 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p></p>
-
 <p>following goes to <strong>routing.yml</strong></p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -1178,14 +1176,14 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="err">   </span><span class="c1"># app/config/routing.yml</span>
 </span><span class='line'><span class="err">    </span><span class="l-Scalar-Plain">fos_oauth_server_token</span><span class="p-Indicator">:</span>
 </span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">resource</span><span class="p-Indicator">:</span> <span class="s">&quot;@FOSOAuthServerBundle/Resources/config/routing/token.xml&quot;</span>
-</span><span class='line'><span class="err">    </span>
+</span><span class='line'>
 </span><span class='line'><span class="err">    </span><span class="l-Scalar-Plain">fos_oauth_server_authorize</span><span class="p-Indicator">:</span>
 </span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">resource</span><span class="p-Indicator">:</span> <span class="s">&quot;@FOSOAuthServerBundle/Resources/config/routing/authorize.xml&quot;</span>
-</span><span class='line'><span class="err">    </span>
+</span><span class='line'>
 </span><span class='line'><span class="err">    </span><span class="l-Scalar-Plain">acme_oauth_server_auth_login</span><span class="p-Indicator">:</span>
 </span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">pattern</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">/oauth/v2/auth_login</span>
 </span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">defaults</span><span class="p-Indicator">:</span> <span class="p-Indicator">{</span> <span class="nv">_controller</span><span class="p-Indicator">:</span> <span class="nv">AcmeDemoBundle</span><span class="p-Indicator">:</span><span class="nv">Security</span><span class="p-Indicator">:</span><span class="nv">login</span> <span class="p-Indicator">}</span>
-</span><span class='line'><span class="err">    </span>
+</span><span class='line'>
 </span><span class='line'><span class="err">    </span><span class="l-Scalar-Plain">acme_oauth_server_auth_login_check</span><span class="p-Indicator">:</span>
 </span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">pattern</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">/oauth/v2/auth_login_check</span>
 </span><span class='line'><span class="err">    </span>    <span class="l-Scalar-Plain">defaults</span><span class="p-Indicator">:</span> <span class="p-Indicator">{</span> <span class="nv">_controller</span><span class="p-Indicator">:</span> <span class="nv">AcmeDemoBundle</span><span class="p-Indicator">:</span><span class="nv">Security</span><span class="p-Indicator">:</span><span class="nv">loginCheck</span> <span class="p-Indicator">}</span>
@@ -1290,7 +1288,7 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 <span class='line-number'>56</span>
 <span class='line-number'>57</span>
 </pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
-</span><span class='line'><span class="c1"># src/Acme/DemoBundle/Command/CreateClientCommand.php    </span>
+</span><span class='line'><span class="c1"># src/Acme/DemoBundle/Command/CreateClientCommand.php</span>
 </span><span class='line'><span class="k">namespace</span> <span class="nx">Acme\DemoBundle\Command</span><span class="p">;</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">use</span> <span class="nx">Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand</span><span class="p">;</span>
@@ -1380,8 +1378,6 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
 </pre></td><td class='code'><pre><code class='json'><span class='line'><span class="p">{</span><span class="nt">&quot;access_token&quot;</span><span class="p">:</span><span class="s2">&quot;YTk0YTVjZDY0YWI2ZmE0NjRiODQ4OWIyNjZkNjZlMTdiZGZlNmI3MDNjZGQwYTZkMDNiMjliNDg3NWYwZWI0MQ&quot;</span><span class="p">,</span><span class="nt">&quot;expires_in&quot;</span><span class="p">:</span><span class="mi">3600</span><span class="p">,</span><span class="nt">&quot;token_type&quot;</span><span class="p">:</span><span class="s2">&quot;bearer&quot;</span><span class="p">,</span><span class="nt">&quot;scope&quot;</span><span class="p">:</span><span class="s2">&quot;user&quot;</span><span class="p">,</span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="s2">&quot;ZDU1MDY1OTc4NGNlNzQ5NWFiYTEzZTE1OGY5MWNjMmViYTBiNmRjOTNlY2ExNzAxNWRmZTM1NjI3ZDkwNDdjNQ&quot;</span><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
-
-
 </div>
 
 
@@ -1451,7 +1447,7 @@ Part 3 &ndash; Using OAuth2 with &hellip;">
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/">OAuth2 Explained: Part 4 - Implementing Custom Grant Type With Symfony2 and FOSOAuthServerBundle</a>
+        <a href="/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle+copy/">OAuth2 Explained: Part 4 - Implementing Custom Grant Type With Symfony2 and FOSOAuthServerBundle</a>
       </li>
     
       <li class="post">
