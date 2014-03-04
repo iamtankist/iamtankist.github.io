@@ -10,7 +10,7 @@ categories: [OAuth, Symfony2]
 - [Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle](http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/)
 - [Part 3 - Using OAuth2 with your bare hands](http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/)
 - [Part 4 - Implementing Custom Grant Type](http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/)
-- Part 5 - Implementing OAuth2 Client with Symfony2 
+- [Part 5 - Implementing OAuth2 Client with Symfony2](http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing.oauth2-client-with-symfony2/)
 
 ## Prerequisites
 
@@ -21,14 +21,14 @@ Also your project already, most probably, should has a User Entity, if not you c
 <!-- more -->
 ``` php
   <?php
-	
+
 	// src/Acme/DemoBundle/Entity/User.php
-	
+
 	namespace Acme\DemoBundle\Entity;
-	
+
 	use Symfony\Component\Security\Core\User\UserInterface;
 	use Doctrine\ORM\Mapping as ORM;
-	
+
 	/**
 	 * Acme\UserBundle\Entity\User
 	 *
@@ -43,42 +43,42 @@ Also your project already, most probably, should has a User Entity, if not you c
 	     * @ORM\GeneratedValue(strategy="AUTO")
 	     */
 	    private $id;
-	
+
 	    /**
 	     * @ORM\Column(type="string", length=25, unique=true)
 	     */
 	    private $username;
-	
+
 	    /**
 	     * @ORM\Column(type="string", length=25, unique=true)
 	     */
 	    private $email;
-	
+
 	    /**
 	     * @ORM\Column(type="string", length=32)
 	     */
 	    private $salt;
-	
+
 	    /**
 	     * @ORM\Column(type="string", length=40)
 	     */
 	    private $password;
-	
+
 	    /**
 	     * @ORM\Column(name="is_active", type="boolean")
 	     */
 	    private $isActive;
-	
+
 	    public function __construct()
 	    {
 	        $this->isActive = true;
 	        $this->salt = md5(uniqid(null, true));
 	    }
-	
+
 	    public function getId(){
 	        return $this->id;
 	    }
-	
+
 	    /**
 	     * @inheritDoc
 	     */
@@ -86,7 +86,7 @@ Also your project already, most probably, should has a User Entity, if not you c
 	    {
 	        return $this->username;
 	    }
-	
+
 	    /**
 	     * @inheritDoc
 	     */
@@ -95,7 +95,7 @@ Also your project already, most probably, should has a User Entity, if not you c
 	        $this->username = $username;
 	        $this->email = $username;
 	    }
-	
+
 	    /**
 	     * @inheritDoc
 	     */
@@ -103,12 +103,12 @@ Also your project already, most probably, should has a User Entity, if not you c
 	    {
 	        return $this->salt;
 	    }
-	
+
 	    public function setSalt($salt)
 	    {
 	        $this->salt = $salt;
 	    }
-	
+
 	    /**
 	     * @inheritDoc
 	     */
@@ -116,12 +116,12 @@ Also your project already, most probably, should has a User Entity, if not you c
 	    {
 	        return $this->password;
 	    }
-	
+
 	    public function setPassword($password)
 	    {
 	        $this->password = $password;
 	    }
-	
+
 	    /**
 	     * @inheritDoc
 	     */
@@ -129,14 +129,14 @@ Also your project already, most probably, should has a User Entity, if not you c
 	    {
 	        return array('ROLE_USER');
 	    }
-	
+
 	    /**
 	     * @inheritDoc
 	     */
 	    public function eraseCredentials()
 	    {
 	    }
-	
+
 	    /**
 	     * @see \Serializable::serialize()
 	     */
@@ -148,7 +148,7 @@ Also your project already, most probably, should has a User Entity, if not you c
 	            )
 	        );
 	    }
-	
+
 	    /**
 	     * @see \Serializable::unserialize()
 	     */
@@ -168,22 +168,22 @@ We are going to need a user provider as well.
 		// src/Acme/DemoBundle/Provider/UserProvider.php
 
 		namespace Acme\DemoBundle\Provider;
-		
+
 		use Symfony\Component\Security\Core\User\UserInterface;
 		use Symfony\Component\Security\Core\User\UserProviderInterface;
 		use Symfony\Component\Security\Core\Exception\UsernameNotFoundException;
 		use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 		use Doctrine\Common\Persistence\ObjectRepository;
 		use Doctrine\ORM\NoResultException;
-		
+
 		class UserProvider implements UserProviderInterface
 		{
 		    protected $userRepository;
-		
+
 		    public function __construct(ObjectRepository $userRepository){
 		        $this->userRepository = $userRepository;
 		    }
-		
+
 		    public function loadUserByUsername($username)
 		    {
 		        $q = $this->userRepository
@@ -192,7 +192,7 @@ We are going to need a user provider as well.
 		            ->setParameter('username', $username)
 		            ->setParameter('email', $username)
 		            ->getQuery();
-		
+
 		        try {
 		            $user = $q->getSingleResult();
 		        } catch (NoResultException $e) {
@@ -202,10 +202,10 @@ We are going to need a user provider as well.
 		            );
 		            throw new UsernameNotFoundException($message, 0, $e);
 		        }
-		
+
 		        return $user;
 		    }
-		
+
 		    public function refreshUser(UserInterface $user)
 		    {
 		        $class = get_class($user);
@@ -217,10 +217,10 @@ We are going to need a user provider as well.
 		                )
 		            );
 		        }
-		
+
 		        return $this->userRepository->find($user->getId());
 		    }
-		
+
 		    public function supportsClass($class)
 		    {
 		        return $this->userRepository->getClassName() === $class
@@ -274,27 +274,27 @@ Now you need to enable this bundle in the Kernel:
 ``` php
 	<?php
 	// app/AppKernel.php
-	
+
 	public function registerBundles()
 	{
 	    $bundles = array(
 	        // ...
 	        new FOS\OAuthServerBundle\FOSOAuthServerBundle(),
 	    );
-	} 
+	}
 ```
-Now we need to create several additional entities. 
+Now we need to create several additional entities.
 
 ### Client Entity
 
 ``` php
 	// src/Acme/DemoBundle/Entity/Client.php
-	
+
 	namespace Acme\DemoBundle\Entity;
-	
+
 	use FOS\OAuthServerBundle\Entity\Client as BaseClient;
 	use Doctrine\ORM\Mapping as ORM;
-	
+
 	/**
 	 * @ORM\Entity
 	 */
@@ -306,7 +306,7 @@ Now we need to create several additional entities.
 	     * @ORM\GeneratedValue(strategy="AUTO")
 	     */
 	    protected $id;
-	
+
 	    public function __construct()
 	    {
 	        parent::__construct();
@@ -319,12 +319,12 @@ Now we need to create several additional entities.
 ``` php
 	<?php
 	// src/Acme/DemoBundle/Entity/AccessToken.php
-	
+
 	namespace Acme\DemoBundle\Entity;
-	
+
 	use FOS\OAuthServerBundle\Entity\AccessToken as BaseAccessToken;
 	use Doctrine\ORM\Mapping as ORM;
-	
+
 	/**
 	 * @ORM\Entity
 	 */
@@ -336,13 +336,13 @@ Now we need to create several additional entities.
 	     * @ORM\GeneratedValue(strategy="AUTO")
 	     */
 	    protected $id;
-	
+
 	    /**
 	     * @ORM\ManyToOne(targetEntity="Client")
 	     * @ORM\JoinColumn(nullable=false)
 	     */
 	    protected $client;
-	
+
 	    /**
 	     * @ORM\ManyToOne(targetEntity="User")
 	     */
@@ -355,12 +355,12 @@ Now we need to create several additional entities.
 ``` php
 	<?php
 	// src/Acme/DemoBundle/Entity/RefreshToken.php
-	
+
 	namespace Acme\DemoBundle\Entity;
-	
+
 	use FOS\OAuthServerBundle\Entity\RefreshToken as BaseRefreshToken;
 	use Doctrine\ORM\Mapping as ORM;
-	
+
 	/**
 	 * @ORM\Entity
 	 */
@@ -372,13 +372,13 @@ Now we need to create several additional entities.
 	     * @ORM\GeneratedValue(strategy="AUTO")
 	     */
 	    protected $id;
-	
+
 	    /**
 	     * @ORM\ManyToOne(targetEntity="Client")
 	     * @ORM\JoinColumn(nullable=false)
 	     */
 	    protected $client;
-	
+
 	    /**
 	     * @ORM\ManyToOne(targetEntity="User")
 	     */
@@ -389,12 +389,12 @@ Now we need to create several additional entities.
 ``` php
 	<?php
 	// src/Acme/DemoBundle/Entity/AuthCode.php
-	
+
 	namespace Acme\DemoBundle\Entity;
-	
+
 	use FOS\OAuthServerBundle\Entity\AuthCode as BaseAuthCode;
 	use Doctrine\ORM\Mapping as ORM;
-	
+
 	/**
 	 * @ORM\Entity
 	 */
@@ -406,41 +406,41 @@ Now we need to create several additional entities.
 	     * @ORM\GeneratedValue(strategy="AUTO")
 	     */
 	    protected $id;
-	
+
 	    /**
 	     * @ORM\ManyToOne(targetEntity="Client")
 	     * @ORM\JoinColumn(nullable=false)
 	     */
 	    protected $client;
-	
+
 	    /**
 	     * @ORM\ManyToOne(targetEntity="User")
 	     */
 	    protected $user;
 	}
 ```
-Please pay attention to the user entity namespace, since your User entity might be in other bundle, make sure that namespaces pointing to User entity are correct. 
+Please pay attention to the user entity namespace, since your User entity might be in other bundle, make sure that namespaces pointing to User entity are correct.
 
-Ok, entities are created, now it's time to create a separate login page for users coming from OAuth direction. I prefer to use separate login forms to handle this, because usually inside the project you have different redirection policies, and in case of OAuth you strictly need to redirect back to referrer. But of course feel free to reuse your already existing login form inside the project, just make sure it redirects you to the right place then. 
+Ok, entities are created, now it's time to create a separate login page for users coming from OAuth direction. I prefer to use separate login forms to handle this, because usually inside the project you have different redirection policies, and in case of OAuth you strictly need to redirect back to referrer. But of course feel free to reuse your already existing login form inside the project, just make sure it redirects you to the right place then.
 
 Here is the controller responsible for the login form
 ``` php
 	<?php
 
 	# src/Acme/DemoBundle/Controller/SecurityController.php
-	
+
 	namespace Acme\DemoBundle\Controller;
-	
+
 	use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 	use Symfony\Component\HttpFoundation\Request;
 	use Symfony\Component\Security\Core\SecurityContext;
-	
+
 	class SecurityController extends Controller
 	{
 	    public function loginAction(Request $request)
 	    {
 	        $session = $request->getSession();
-	
+
 	        if ($request->attributes->has(SecurityContext::AUTHENTICATION_ERROR)) {
 	            $error = $request->attributes->get(SecurityContext::AUTHENTICATION_ERROR);
 	        } elseif (null !== $session && $session->has(SecurityContext::AUTHENTICATION_ERROR)) {
@@ -449,14 +449,14 @@ Here is the controller responsible for the login form
 	        } else {
 	            $error = '';
 	        }
-	
+
 	        if ($error) {
 	            $error = $error->getMessage(
 	            ); // WARNING! Symfony source code identifies this line as a potential security threat.
 	        }
-	
+
 	        $lastUsername = (null === $session) ? '' : $session->get(SecurityContext::LAST_USERNAME);
-	
+
 	        return $this->render(
 	            'AcmeDemoBundle:Security:login.html.twig',
 	            array(
@@ -465,10 +465,10 @@ Here is the controller responsible for the login form
 	            )
 	        );
 	    }
-	
+
 	    public function loginCheckAction(Request $request)
 	    {
-	
+
 	    }
 	}
 ```
@@ -509,30 +509,30 @@ Following goes into __security.yml__
 	            algorithm:        sha1
 	            encode_as_base64: false
 	            iterations:       1
-	
+
 	    role_hierarchy:
 	        ROLE_ADMIN:       ROLE_USER
 	        ROLE_SUPER_ADMIN: ROLE_ADMIN
-	
+
 	    providers:
 	        user_provider:
 	            id: platform.user.provider
-	
-	
+
+
 	    firewalls:
 	        dev:
 	            pattern:  ^/(_(profiler|wdt)|css|images|js)/
 	            security: false
-	
+
 	        login:
 	            pattern:  ^/demo/secured/login$
 	            security: false
-	
-	
+
+
 	        oauth_token:
 	            pattern:    ^/oauth/v2/token
 	            security:   false
-	
+
 	        secured_area:
 	            pattern:    ^/demo/secured/
 	            form_login:
@@ -545,7 +545,7 @@ Following goes into __security.yml__
 	            #anonymous: ~
 	            #http_basic:
 	            #    realm: "Secured Demo Area"
-	
+
 	        oauth_authorize:
 	            pattern:    ^/oauth/v2/auth
 	            form_login:
@@ -553,18 +553,18 @@ Following goes into __security.yml__
 	                check_path: _security_check
 	                login_path: _demo_login
 	            anonymous: true
-	
+
 	        api:
 	            pattern:    ^/api
 	            fos_oauth:  true
 	            stateless:  true
-	
+
 	    access_control:
 	        # You can omit this if /api can be accessed both authenticated and anonymously
 	        - { path: ^/api, roles: [ IS_AUTHENTICATED_FULLY ] }
 	        - { path: ^/demo/secured/hello/admin/, roles: ROLE_ADMIN }
 	        #- { path: ^/login, roles: IS_AUTHENTICATED_ANONYMOUSLY, requires_channel: https }
-``` 
+```
 
 following goes to __routing.yml__
 ``` yaml
@@ -572,14 +572,14 @@ following goes to __routing.yml__
 	# app/config/routing.yml
 	fos_oauth_server_token:
 	    resource: "@FOSOAuthServerBundle/Resources/config/routing/token.xml"
-	
+
 	fos_oauth_server_authorize:
 	    resource: "@FOSOAuthServerBundle/Resources/config/routing/authorize.xml"
-	
+
 	acme_oauth_server_auth_login:
 	    pattern:  /oauth/v2/auth_login
 	    defaults: { _controller: AcmeDemoBundle:Security:login }
-	
+
 	acme_oauth_server_auth_login_check:
 	    pattern:  /oauth/v2/auth_login_check
 	    defaults: { _controller: AcmeDemoBundle:Security:loginCheck }
@@ -611,9 +611,9 @@ first thing you need to do is give the platform ability to easily create clients
 Create a command file
 ``` php
 	<?php
-	# src/Acme/DemoBundle/Command/CreateClientCommand.php	
+	# src/Acme/DemoBundle/Command/CreateClientCommand.php
 	namespace Acme\DemoBundle\Command;
-	
+
 	use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 	use Symfony\Component\Console\Input\InputArgument;
 	use Symfony\Component\Console\Input\InputOption;
@@ -644,13 +644,13 @@ Create a command file
 	            ->setHelp(
 	                <<<EOT
 	                    The <info>%command.name%</info>command creates a new client.
-	
+
 	<info>php %command.full_name% [--redirect-uri=...] [--grant-type=...] name</info>
-	
+
 	EOT
 	            );
 	    }
-	
+
 	    protected function execute(InputInterface $input, OutputInterface $output)
 	    {
 	        $clientManager = $this->getContainer()->get('fos_oauth_server.client_manager.default');
@@ -681,7 +681,7 @@ Keep those public_id and secret somewhere private, since that's the credentials 
 
 ### Check if it works
 
-Execute the following request in your browser 
+Execute the following request in your browser
 ```
 	http://portal.local/app_dev.php/oauth/v2/token?client_id=5_ebg354gknv48kc88o8oogwokckco0o40sc000cowc8soosw0k&client_secret=5ub5upfxih0k8g44w00ogwc4swog4088o8444sssos8k888o8g&grant_type=client_credentials
 ```
@@ -689,4 +689,3 @@ If you see response like this one, then we did everything correctly, otherwise, 
 ``` json
 	{"access_token":"YTk0YTVjZDY0YWI2ZmE0NjRiODQ4OWIyNjZkNjZlMTdiZGZlNmI3MDNjZGQwYTZkMDNiMjliNDg3NWYwZWI0MQ","expires_in":3600,"token_type":"bearer","scope":"user","refresh_token":"ZDU1MDY1OTc4NGNlNzQ5NWFiYTEzZTE1OGY5MWNjMmViYTBiNmRjOTNlY2ExNzAxNWRmZTM1NjI3ZDkwNDdjNQ"}
 ```
-

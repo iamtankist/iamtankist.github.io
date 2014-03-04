@@ -11,13 +11,13 @@ published: true
 - [Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle](http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/)
 - [Part 3 - Using OAuth2 with your bare hands](http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/)
 - [Part 4 - Implementing Custom Grant Type](http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/)
-- Part 5 - Implementing OAuth2 Client with Symfony2 
+- [Part 5 - Implementing OAuth2 Client with Symfony2](http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing.oauth2-client-with-symfony2/)
 
 # We need something custom
 
-In the previous part we have tested several standard grant-types that come out-of the box with FOSOAuthServerBundle, but probably you will need something more specific for your application. For example it is common to assign specific user API keys to allow access to the application. That way you don't expose user password to the API on the other you can control API keys, make them expire, revoke, etc. 
+In the previous part we have tested several standard grant-types that come out-of the box with FOSOAuthServerBundle, but probably you will need something more specific for your application. For example it is common to assign specific user API keys to allow access to the application. That way you don't expose user password to the API on the other you can control API keys, make them expire, revoke, etc.
 
-It's possible to define your custom grant-type, which will authenticate the user based on his API key. 
+It's possible to define your custom grant-type, which will authenticate the user based on his API key.
 
 ## Preparations
 
@@ -26,7 +26,7 @@ First, let's modify the User entity. It needs to hold the API key from now on.
 <!-- more -->
 
 ``` php
-	<?php 
+	<?php
 
 	namespace Acme/DemoBundle/Entity;
 
@@ -71,7 +71,7 @@ I'll use built-in doctrine command which ships with Symfony2 Standard Edition fo
 
 ``` bash
 	php app/console doctrine:schema:update --force
-``` 	
+```
 
 but for the project which will hit the Internets I would highly recommend to use [Doctrine Migrations](https://github.com/doctrine/DoctrineMigrationsBundle) instead.
 
@@ -81,7 +81,7 @@ Now it's time to get to the topic
 
 ## Implementing custom Grant Type
 
-You will need a class which implements the logic for verifying the provided apiKey agains database. 
+You will need a class which implements the logic for verifying the provided apiKey agains database.
 
 ``` php
 	<?php
@@ -155,7 +155,7 @@ Note: http://platform.local/grants/api_key it must not be a valid url that leads
 
 First you need to create a client which grants this custom grant extension
 
-	php app/console acme:oauth-server:client:create --grant-type="http://platform.local/grants/api_key" 
+	php app/console acme:oauth-server:client:create --grant-type="http://platform.local/grants/api_key"
 
 Expected output looks like this
 
@@ -165,7 +165,7 @@ Next we need to fire an http request against the oauth provider with this creden
 
 	curl -XGET "http://portal.local/oauth/v2/token?grant_type=http://platform.local/grants/api_key&client_id=CLIENT_ID&client_secret=CLIENT_SECRET&api_key=API_KEY"
 
-If the API_KEY is one of the keys you had set on the user table, you will get success response 
+If the API_KEY is one of the keys you had set on the user table, you will get success response
 
 	{"access_token":"OTQ2OTNkY2VkMmI3MzQ4MDUwMTY2YjUwOWZhMjBjYmM5NGI2N2UwNDIwNDhkNTY2MWNlNTk1MmE5MmNhMTJjNA","expires_in":3600,"token_type":"bearer","scope":null,"refresh_token":"NTBkZDgxOGJiYmExYzZhNzQ5MmMwNTZjNjAyYzQzMmU1OTQ2NmRmMzljYzQxNmM3OGQ5ZDhhMjRhMjZiZTZmMA"}
 
@@ -175,4 +175,4 @@ otherwise an
 
 ## Summary
 
-As you see implementing custom authorisation mechanisms with OAuth2 and Symfony2 using FOSOAuthServerBundle is really easy. One other example when you need this, is when you implement an API which supports a mobile app, and one of the features is Facebook login on the mobile app. Then you need to somehow login user on the backend as well. The correct way to do this is passing a facebook access token through a custom grant extension to the backend, backend then makes a request to the facebook, to make sure the token is correct, finds out user from it, and gives back the mobile app an access_token with a backend user associated to it. 
+As you see implementing custom authorisation mechanisms with OAuth2 and Symfony2 using FOSOAuthServerBundle is really easy. One other example when you need this, is when you implement an API which supports a mobile app, and one of the features is Facebook login on the mobile app. Then you need to somehow login user on the backend as well. The correct way to do this is passing a facebook access token through a custom grant extension to the backend, backend then makes a request to the facebook, to make sure the token is correct, finds out user from it, and gives back the mobile app an access_token with a backend user associated to it.

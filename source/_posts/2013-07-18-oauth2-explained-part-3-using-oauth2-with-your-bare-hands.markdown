@@ -11,7 +11,7 @@ published: true
 - [Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle](http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/)
 - [Part 3 - Using OAuth2 with your bare hands](http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/)
 - [Part 4 - Implementing Custom Grant Type](http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/)
-- Part 5 - Implementing OAuth2 Client with Symfony2 
+- [Part 5 - Implementing OAuth2 Client with Symfony2](http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing.oauth2-client-with-symfony2/)
 
 
 ## Preparations
@@ -54,13 +54,13 @@ We'll need a controller that mimics a dummy API behavior for us.
 
 ## Let's Fail!
 
-Please keep in mind, that the point is to obtain access_token. 
+Please keep in mind, that the point is to obtain access_token.
 
 Why? Request
 
 	PROVIDER_HOST/api/articles
 
-What? 
+What?
 
 	{"error":"access_denied","error_description":"OAuth2 authentication required"}
 
@@ -73,37 +73,37 @@ First we need to create a Client and allow all possible grant types for it. Here
 	php app/console acme:oauth-server:client:create --redirect-uri="CLIENT_HOST" --grant-type="authorization_code" --grant-type="password" --grant-type="refresh-token" --grant-type="token" --grant-type="client_credentials"
 
 
-command should respond with something like 
+command should respond with something like
 
 	Added a new client with public id 2_1y1zqhh7ws5c8kok8g8w88kkokos0wwswwwowos4o48s48s88w, secret 16eqpwofy5dwo4wggk4s40s80sgcs4gc0cwgwsc8k8w0k8sks4
 
 
-Please keep those values somewhere in an easy accessible place, we will need those during this tutorial. 
+Please keep those values somewhere in an easy accessible place, we will need those during this tutorial.
 To keep URLs short and readable I'll refer to those as CLIENT\_ID and CLIENT\_SECRET in the future.
 
-Let's start from the more complicated grant types and move on to the simpler ones. 
+Let's start from the more complicated grant types and move on to the simpler ones.
 
 ## Authorization Code
 
-That's the most commonly used one, recommended to authorize end customers. A good example is the Facebook Login for websites. Here's how it works. 
+That's the most commonly used one, recommended to authorize end customers. A good example is the Facebook Login for websites. Here's how it works.
 
 Request this url in the browser:
 
 	PROVIDER_HOST/oauth/v2/auth?client_id=CLIENT_ID&response_type=code&redirect_uri=CLIENT_HOST
-	
-note: redirect_uri should be identical to the one provided on client creation, otherwise you will get a corresponding error message. 
+
+note: redirect_uri should be identical to the one provided on client creation, otherwise you will get a corresponding error message.
 
 The page you are requesting will offer you a login, then authorization of the client permissions, once you confirm everything it will redirect you back to the url you provided in redirect_url. In our case, redirect will look like
 
 	CLIENT_HOST/?code=Yjk2MWU5YjVhODBiN2I0ZDRkYmQ1OGM0NGY4MmUyOGM2NDQ2MmY2ZDg2YjUxYjRiMzAwZTY2MDQxZmUzODg2YQ
 
-I'll refer to this long code parameter as CODE in the future. This code is stored on the Provider side, and once you request for the token, it can uniquely identify the client which made request and the user. 
+I'll refer to this long code parameter as CODE in the future. This code is stored on the Provider side, and once you request for the token, it can uniquely identify the client which made request and the user.
 
 It's time to request the token
 
 	PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&client_secret=CLIENT_SECRET&grant_type=authorization_code&redirect_uri=http%3A%2F%2Fclinet.local%2F&code=CODE
 
-Most probably this request will fail. That's because CODE expires rather quickly. Fear not, just request first URL, repeat the process, prepare the second url in the text editor of your choice, copy in the code rather quickly, and you will get the desired result. 
+Most probably this request will fail. That's because CODE expires rather quickly. Fear not, just request first URL, repeat the process, prepare the second url in the text editor of your choice, copy in the code rather quickly, and you will get the desired result.
 
 It's a JSON which contains access_token and looks like this
 
@@ -117,15 +117,15 @@ It's similar to Authorization Code grant, it's just a bit simpler. You just need
 
 	PROVIDER_HOST/oauth/v2/auth?client_id=2_1y1zqhh7ws5c8kok8g8w88kkokos0wwswwwowos4o48s48s88w&redirect_uri=http%3A%2F%2Fclinet.local%2F&response_type=token
 
-then you will get redirected to 
+then you will get redirected to
 
 	CLIENT_HOST/#access_token=YWZhZWQ5NjQxOTI2ODJmZWE4YjJiYmExZTIxZmE5OWUxOWZjZjgwZDFlZWMwMjkyZDQwZWU1NWI4YWIzODllNQ&expires_in=3600&token_type=bearer&refresh_token=YzQ1YjRhODk2YzJiYTZmMzNiNjI5ZjI2MDI3ZmMwMDg3MjkxMDdhYmE5YjBlYzRlZmM2M2Q0NTM3ZjFmZDZiYQ
-	
+
 ## Password flow
 
-Let's say you have no luxury of redirecting user to some website, then handle redirect call, all you have is just an application which is able to send HTTP requests. And you still want to somehow authenticate user on the server side, and all you have is username and password. 
+Let's say you have no luxury of redirecting user to some website, then handle redirect call, all you have is just an application which is able to send HTTP requests. And you still want to somehow authenticate user on the server side, and all you have is username and password.
 
-Request: 
+Request:
 
 	PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&client_secret=CLIENT_SECRET&grant_type=password&username=USERNAME&password=PASSWORD
 
@@ -135,7 +135,7 @@ Response:
 
 ## Client Credentials
 
-This one is the most simplistic flow of them all. You just need to provide CLIENT\_ID and CLIENT\_SECRET. 
+This one is the most simplistic flow of them all. You just need to provide CLIENT\_ID and CLIENT\_SECRET.
 
 	PROVIDER_HOST/oauth/v2/token?client_id=CLIENT_ID&client_secret=CLIENT_SECRET&grant_type=client_credentials
 
@@ -162,7 +162,7 @@ Request
 	PROVIDER_HOST/api/articles?access_token=ACCESS_TOKEN
 
 Response
-	
+
 	["article1","article2","article3"]
 
 Seems like a proper response, does it?
@@ -182,4 +182,3 @@ If that was the Client Credentials, ACCESS_TOKEN doesn't contain any user inform
 	{"message":"User is not identified"}
 
 In the next part we will define a custom Grant type which allows us to retrieve access_token based on API Key.
-
