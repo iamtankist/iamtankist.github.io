@@ -4,14 +4,14 @@ title: "OAuth2 Explained: Part 5 - Implementing OAuth2 Client with Symfony2"
 date: 2014-03-04 18:45
 comments: true
 categories: [OAuth, Symfony2]
-published: false
+published: true
 ---
 
 - [Part 1 - Principles and Terminology](http://blog.tankist.de/blog/2013/07/16/oauth2-explained-part-1-principles-and-terminology/)
 - [Part 2 - Setting up OAuth2 with Symfony2 using FOSOAuthServerBundle](http://blog.tankist.de/blog/2013/07/17/oauth2-explained-part-2-setting-up-oauth2-with-symfony2-using-fosoauthserverbundle/)
 - [Part 3 - Using OAuth2 with your bare hands](http://blog.tankist.de/blog/2013/07/18/oauth2-explained-part-3-using-oauth2-with-your-bare-hands/)
 - [Part 4 - Implementing Custom Grant Type](http://blog.tankist.de/blog/2013/08/20/oauth2-explained-part-4-implementing-custom-grant-type-symfony2-fosoauthserverbundle/)
-- [Part 5 - Implementing OAuth2 Client with Symfony2](http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing.oauth2-client-with-symfony2/)
+- [Part 5 - Implementing OAuth2 Client with Symfony2](http://blog.tankist.de/blog/2014/03/04/oauth2-explained-part-5-implementing-oauth2-client-with-symfony2/)
 
 Intro
 -----
@@ -22,6 +22,8 @@ Overview
 For this implementation I had two options. To use [lightweight OAuth2 client library](https://github.com/adoy/PHP-OAuth2) or to implement Guzzle Plugin. I have chosen the first approach, since it covers several grants at once, when Guzzle plugin will solve the more specific problem, and might be a better solution in your specific case.
 
 In this article I will focus on authorization_code and client_credentials grant types.
+
+<!-- more -->
 
 Setup
 -----
